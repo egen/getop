@@ -48,23 +48,15 @@ def main(
 
 # ---- command groups (implemented in geadm/commands/) -----------------------
 
-ls_app = typer.Typer(help="List Gemini Enterprise resources (read-only).", no_args_is_help=True)
-logs_app = typer.Typer(help="Inspect Gemini Enterprise Cloud Logging output.", no_args_is_help=True)
+from geadm.commands import doctor as doctor_cmd  # noqa: E402
+from geadm.commands import logs as logs_cmd  # noqa: E402
+from geadm.commands import ls as ls_cmd  # noqa: E402
+from geadm.commands import stats as stats_cmd  # noqa: E402
 
-app.add_typer(ls_app, name="ls")
-app.add_typer(logs_app, name="logs")
-
-
-@app.command()
-def stats(ctx: typer.Context) -> None:
-    """Query volume, latency and connector sync freshness (stub)."""
-    raise typer.Exit(code=1)
-
-
-@app.command()
-def doctor(ctx: typer.Context) -> None:
-    """Composite read-only health check (stub)."""
-    raise typer.Exit(code=1)
+app.add_typer(ls_cmd.app, name="ls")
+app.add_typer(logs_cmd.app, name="logs")
+app.command(name="stats")(stats_cmd.stats_command)
+app.command(name="doctor")(doctor_cmd.doctor_command)
 
 
 if __name__ == "__main__":

@@ -38,6 +38,23 @@ class Clients:
     location: str = "global"
     _cache: dict[str, Any] = field(default_factory=dict, repr=False)
 
+    @property
+    def _credentials(self) -> Any:
+        """ADC credentials with the target project as quota project.
+
+        User ADC has no quota project by default and discoveryengine rejects
+        such calls; billing quota against the inspected project matches what
+        `gcloud auth application-default set-quota-project` would do.
+        """
+        if "credentials" not in self._cache:
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            if hasattr(credentials, "with_quota_project"):
+                credentials = credentials.with_quota_project(self.project)
+            self._cache["credentials"] = credentials
+        return self._cache["credentials"]
+
     # ---- Discovery Engine -------------------------------------------------
     def discoveryengine(self, client_cls: type) -> Any:
         """Build (once) a Discovery Engine service client of the given class,
@@ -48,7 +65,9 @@ class Clients:
         if key not in self._cache:
             endpoint = _regional_endpoint(self.location)
             options = ClientOptions(api_endpoint=endpoint) if endpoint else None
-            self._cache[key] = client_cls(client_options=options)
+            self._cache[key] = client_cls(
+                credentials=self._credentials, client_options=options
+            )
         return self._cache[key]
 
     # ---- Cloud Logging ----------------------------------------------------
@@ -58,7 +77,9 @@ class Clients:
         if "logging" not in self._cache:
             from google.cloud import logging_v2
 
-            self._cache["logging"] = logging_v2.Client(project=self.project)
+            self._cache["logging"] = logging_v2.Client(
+                project=self.project, credentials=self._credentials
+            )
         return self._cache["logging"]
 
     # ---- Cloud Monitoring ---------------------------------------------------
@@ -68,8 +89,32 @@ class Clients:
         if "monitoring" not in self._cache:
             from google.cloud import monitoring_v3
 
-            self._cache["monitoring"] = monitoring_v3.MetricServiceClient()
+            self._cache["monitoring"] = monitoring_v3.MetricServiceClient(
+                credentials=self._credentials
+            )
         return self._cache["monitoring"]
+
+    # ---- REST fallback (GET only) -------------------------------------------
+    def rest_get(self, path: str, params: dict[str, str] | None = None) -> dict:
+        """HTTP GET against the Discovery Engine REST API (regional-aware).
+
+        For read surfaces the published Python clients don't expose
+        (e.g. v1alpha dataConnector / assistants agents). GET only — this
+        helper cannot issue mutating requests.
+
+        `path` is the versioned resource path, e.g.
+        "v1alpha/projects/p/locations/global/collections/default_collection/dataConnector".
+        """
+        if "session" not in self._cache:
+            from google.auth.transport.requests import AuthorizedSession
+
+            self._cache["session"] = AuthorizedSession(self._credentials)
+        host = _regional_endpoint(self.location) or "discoveryengine.googleapis.com"
+        resp = self._cache["session"].get(
+            f"https://{host}/{path.lstrip('/')}", params=params or {}, timeout=60
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     # ---- Resource-name helpers ---------------------------------------------
     @property
