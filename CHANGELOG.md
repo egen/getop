@@ -1,0 +1,24 @@
+# Changelog
+
+## 0.1.0 (2026-07-03)
+
+
+### Features
+
+* **info:** add project overview with per-engine cards ([#8](https://github.com/egen/geadm/issues/8)) ([49b92e2](https://github.com/egen/geadm/commit/49b92e27eff310ba33428bcdbe320c2006f35d6e))
+* **info:** show engine feature toggles and app type on cards ([#10](https://github.com/egen/geadm/issues/10)) ([fad2b5b](https://github.com/egen/geadm/commit/fad2b5b8651a8915af34eb6ac0f7a230dcb9f8a6))
+* **logs:** add gen_ai prompt/response content stream ([#4](https://github.com/egen/geadm/issues/4)) ([432c1c8](https://github.com/egen/geadm/commit/432c1c8bf01b613e72d84dbf81239dcda21b7f7e))
+* **ls:** add user license inventory ([#3](https://github.com/egen/geadm/issues/3)) ([708c173](https://github.com/egen/geadm/commit/708c173af1fcf1a283bc1a49712317362f46a926))
+* **release:** add MIT license, packaging metadata and release pipeline ([#11](https://github.com/egen/geadm/issues/11)) ([308fe11](https://github.com/egen/geadm/commit/308fe11abecafca8daae6d5d853b0323efff9f3e))
+
+
+### Bug Fixes
+
+* **logs:** parse structured gen_ai content payloads ([#6](https://github.com/egen/geadm/issues/6)) ([fa2662c](https://github.com/egen/geadm/commit/fa2662c0b3ee2a6b96d71d938fec10142168c061))
+* **logs:** use non-markup prefixes for gen_ai tool/thought parts ([#7](https://github.com/egen/geadm/issues/7)) ([e40ec55](https://github.com/egen/geadm/commit/e40ec556ac38befa94881276ecc24b3e97a1a519))
+
+
+### Documentation
+
+* **agents:** adopt Conventional Commits ([#5](https://github.com/egen/geadm/issues/5)) ([514a710](https://github.com/egen/geadm/commit/514a710cf82fe863e254c7e223a6a3d15606efb6))
+* **readme:** document geadm info ([#9](https://github.com/egen/geadm/issues/9)) ([4494f56](https://github.com/egen/geadm/commit/4494f5646ea323ca6f16d04d01eac38423c9e99a))
