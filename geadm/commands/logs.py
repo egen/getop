@@ -20,6 +20,7 @@ enabled Cloud Logging for the Discovery Engine / Agentspace app.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any, Optional
 
@@ -324,6 +325,32 @@ def _render_table(
     return render.table(title, columns, table_rows)
 
 
+_RESOURCE_PREFIX = re.compile(
+    r"^projects/[^/]+/locations/[^/]+/?(collections/default_collection/?)?(engines/)?"
+)
+
+
+def _short_resource(name: Optional[str]) -> Optional[str]:
+    """Compact a resource name for tail output: drop the project/location
+    (and default_collection/engines) boilerplate, keep the meaningful tail."""
+    if not name:
+        return None
+    short = _RESOURCE_PREFIX.sub("", name)
+    return short or None
+
+
+def _short_time(timestamp: Optional[str]) -> str:
+    """Local HH:MM:SS for tail output."""
+    if not timestamp:
+        return "--:--:--"
+    try:
+        from datetime import datetime
+
+        return datetime.fromisoformat(timestamp).astimezone().strftime("%H:%M:%S")
+    except ValueError:
+        return timestamp
+
+
 def _print_follow_row(row: dict, show_user: bool, as_json: bool) -> None:
     """One streamed entry in follow mode: NDJSON with --json, else a line."""
     if as_json:
@@ -333,13 +360,14 @@ def _print_follow_row(row: dict, show_user: bool, as_json: bool) -> None:
         return
     sev = row.get("severity") or "DEFAULT"
     parts = [
-        f"[dim]{row.get('timestamp')}[/dim]",
+        f"[dim]{_short_time(row.get('timestamp'))}[/dim]",
         f"[{render.severity_style(sev)}]{sev:<8}[/{render.severity_style(sev)}]",
     ]
     if show_user and row.get("user"):
         parts.append(f"[cyan]{row['user']}[/cyan]")
-    if row.get("entity_name"):
-        parts.append(f"[magenta]{row['entity_name']}[/magenta]")
+    entity = _short_resource(row.get("entity_name"))
+    if entity:
+        parts.append(f"[magenta]{entity}[/magenta]")
     parts.append(row.get("message") or "")
     render.console.print(" ".join(parts), highlight=False)
 
