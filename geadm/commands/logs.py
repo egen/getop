@@ -213,6 +213,61 @@ def _log_metadata(payload_dict: dict) -> Mapping:
     return {}
 
 
+def _gen_ai_content_text(content: Any) -> Optional[str]:
+    """Render a gen_ai jsonPayload.content value as a readable string.
+
+    Verified against live gen_ai.user.message / gen_ai.choice entries,
+    jsonPayload.content is one of:
+
+      - None: an empty streaming chunk. Renders as None (blank), not the
+        string "None".
+      - a plain string: returned as-is.
+      - a dict {"role": "user"|"model", "parts": [...]}, where each part is
+        one of:
+          {"text": "..."}                    plain text (empty text skipped)
+          {"text": "...", "thought": true}    model reasoning -> "[thought] ..."
+          {"function_call": {"name": ..., "args": {...}, ...}, ...}
+                                               agent tool call -> "[tool] name(args)"
+        Other part keys (file_data, inline_data, executable_code, ...) are
+        ignored. Rendered parts are joined with a single space.
+
+    Anything else falls back to str(content) rather than silently dropping
+    data we haven't seen live yet.
+    """
+    if content is None:
+        return None
+    if isinstance(content, str):
+        return content
+    if isinstance(content, Mapping):
+        parts = content.get("parts")
+        if not isinstance(parts, list):
+            return str(content)
+        rendered: list[str] = []
+        for part in parts:
+            if not isinstance(part, Mapping):
+                continue
+            text = part.get("text")
+            if text:
+                rendered.append(f"[thought] {text}" if part.get("thought") else str(text))
+                continue
+            function_call = part.get("function_call")
+            if isinstance(function_call, Mapping):
+                import json
+
+                name = function_call.get("name") or "?"
+                args = function_call.get("args")
+                args_str = (
+                    json.dumps(args, separators=(",", ":"), default=str)
+                    if args is not None
+                    else "{}"
+                )
+                if len(args_str) > 80:
+                    args_str = args_str[:79] + "…"
+                rendered.append(f"[tool] {name}({args_str})")
+        return " ".join(rendered) if rendered else None
+    return str(content)
+
+
 def _extract_message(payload: Any, payload_dict: dict) -> str:
     if isinstance(payload, str):
         return payload
@@ -221,10 +276,13 @@ def _extract_message(payload: Any, payload_dict: dict) -> str:
     status = payload_dict.get("status")
     if isinstance(status, Mapping) and status.get("message"):
         return str(status["message"])
-    # gen_ai.user.message / gen_ai.choice: jsonPayload is just {"content": "..."}
-    # (choice entries add an "index" field alongside content).
-    if payload_dict.get("content"):
-        return str(payload_dict["content"])
+    # gen_ai.user.message / gen_ai.choice: jsonPayload carries a "content"
+    # key (choice entries add an "index" field alongside it). Live entries
+    # show content is None, a plain string, or a structured
+    # {"role": ..., "parts": [...]} dict -- see _gen_ai_content_text.
+    if "content" in payload_dict:
+        text = _gen_ai_content_text(payload_dict["content"])
+        return text if text is not None else ""
     method_name = payload_dict.get("methodName") or _log_metadata(payload_dict).get(
         "methodName"
     )

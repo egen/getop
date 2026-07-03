@@ -163,6 +163,83 @@ def test_normalize_entry_without_labels_has_no_event():
     assert row["event"] is None
 
 
+def test_normalize_gen_ai_none_content_is_blank_not_string_none():
+    # Live streaming shape: an empty gen_ai.choice chunk carries content=None.
+    row = logs._normalize_entry(
+        _entry(
+            {"content": None, "index": 0},
+            labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == ""
+
+
+def test_normalize_gen_ai_thought_part():
+    row = logs._normalize_entry(
+        _entry(
+            {
+                "content": {
+                    "role": "model",
+                    "parts": [{"text": "Let me check the file first.", "thought": True}],
+                }
+            },
+            labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == "[thought] Let me check the file first."
+
+
+def test_normalize_gen_ai_function_call_part():
+    row = logs._normalize_entry(
+        _entry(
+            {
+                "content": {
+                    "role": "model",
+                    "parts": [
+                        {
+                            "function_call": {
+                                "name": "onedrive_agent__get_file",
+                                "args": {"file_id": "abc123"},
+                            },
+                            "thought_signature": "xyz",
+                        }
+                    ],
+                }
+            },
+            labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == '[tool] onedrive_agent__get_file({"file_id":"abc123"})'
+
+
+def test_normalize_gen_ai_mixed_parts_joined_with_space():
+    row = logs._normalize_entry(
+        _entry(
+            {
+                "content": {
+                    "role": "model",
+                    "parts": [
+                        {"text": "Thinking...", "thought": True},
+                        {"text": ""},
+                        {"function_call": {"name": "search", "args": {"q": "refunds"}}},
+                        {"text": "Here you go."},
+                    ],
+                }
+            },
+            labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == (
+        '[thought] Thinking... [tool] search({"q":"refunds"}) Here you go.'
+    )
+
+
+def test_gen_ai_content_text_helper_directly():
+    assert logs._gen_ai_content_text(None) is None
+    assert logs._gen_ai_content_text("plain") == "plain"
+    assert logs._gen_ai_content_text({"role": "user", "parts": [{"text": ""}]}) is None
+
+
 def test_event_label_maps_gen_ai_events():
     assert logs._event_label("gen_ai.user.message") == "prompt"
     assert logs._event_label("gen_ai.choice") == "reply"
