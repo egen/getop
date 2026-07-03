@@ -299,6 +299,7 @@ geadm never reads or writes key files. Each command needs only a viewer role:
 | `roles/discoveryengine.viewer` | `geadm ls …`, `geadm info`, `geadm doctor` |
 | `roles/logging.viewer` | `geadm logs …`, `geadm doctor` |
 | `roles/monitoring.viewer` | `geadm stats`, `geadm quota`, `geadm doctor` |
+| `roles/modelarmor.viewer` | `geadm armor --policy` |
 
 User credentials (as opposed to service accounts) also need a quota project:
 geadm uses the target project automatically, which requires
