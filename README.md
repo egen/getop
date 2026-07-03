@@ -4,8 +4,7 @@
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-**geadm** is a command-line companion for operating **Google Gemini Enterprise**
-(the Agentspace / Discovery Engine platform, `discoveryengine.googleapis.com`).
+**geadm** is a command-line companion for operating **Google Gemini Enterprise**.
 It gives platform teams fast answers to the questions that come up daily while
 running a Gemini Enterprise deployment: What's deployed? Are the connectors
 syncing? What are users asking, and what is Model Armor flagging? How close are
