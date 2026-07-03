@@ -25,8 +25,10 @@ the project subagents, skills and hard constraints.
 ## Install
 
 ```sh
-uv tool install geadm      # or: pipx install geadm / pip install geadm
+pipx install geadm
 ```
+
+Or with your tool of choice: `uv tool install geadm`, or plain `pip install geadm`.
 
 From a checkout:
 
@@ -36,34 +38,7 @@ uv tool install .
 uv sync && uv run geadm --help
 ```
 
-## Authentication & roles
-
-geadm uses Application Default Credentials (`gcloud auth application-default login`);
-it never reads or writes key files.
-
-| Role | Used by |
-|---|---|
-| `roles/discoveryengine.viewer` | `geadm ls …`, `geadm doctor` |
-| `roles/logging.viewer` | `geadm logs …`, `geadm doctor` |
-| `roles/monitoring.viewer` | `geadm stats`, `geadm quota`, `geadm doctor` |
-
-User credentials (as opposed to service accounts) also need a quota project:
-geadm uses the target project automatically, which requires
-`serviceusage.services.use` there. If you don't have it, pass
-`--quota-project <other-project>` (or set `GOOGLE_CLOUD_QUOTA_PROJECT`) to bill
-a project you can use.
-
-Enabling connector/observability *logging* on a project is a one-time setup
-step requiring `roles/discoveryengine.agentspaceAdmin`; geadm only ever reads
-what's there.
-
 ## Commands
-
-Global options: `--project` (defaults to the ADC project), `--location`
-(default `global`; regional locations are routed to
-`{location}-discoveryengine.googleapis.com`). Every command supports `--json`
-for machine-readable output, and time-windowed commands take `--since`
-(`30m`, `1h`, `24h`, `7d`).
 
 ### Overview — `geadm info`
 
@@ -139,3 +114,40 @@ Runs the whole suite concurrently — inventory reachability, connector states
 and sync freshness, connector/API error logs, metric availability — and renders
 a live PASS/WARN/FAIL table. Exits non-zero if any check fails, so it drops
 straight into CI or cron.
+
+### Version — `geadm version`
+
+```sh
+geadm version
+```
+
+Prints the release, tag and the git commit the package was built from.
+
+### Global options
+
+| Switch | Meaning |
+|---|---|
+| `--project` / `-p` | Target GCP project. Defaults to the ADC project; also reads `GOOGLE_CLOUD_PROJECT`. |
+| `--location` / `-l` | Gemini Enterprise location (default `global`). Regional values route to `{location}-discoveryengine.googleapis.com`. |
+| `--quota-project` | Project to bill API quota against when you lack `serviceusage.services.use` on the target; also reads `GOOGLE_CLOUD_QUOTA_PROJECT`. |
+| `--json` | Machine-readable output on every command (newline-delimited JSON in `--follow` mode). |
+| `--since` | Look-back window on time-based commands: `30m`, `1h`, `24h`, `7d`. |
+
+## Authentication & roles
+
+geadm uses Application Default Credentials (`gcloud auth application-default login`);
+it never reads or writes key files.
+
+| Role | Used by |
+|---|---|
+| `roles/discoveryengine.viewer` | `geadm ls …`, `geadm info`, `geadm doctor` |
+| `roles/logging.viewer` | `geadm logs …`, `geadm doctor` |
+| `roles/monitoring.viewer` | `geadm stats`, `geadm quota`, `geadm doctor` |
+
+User credentials (as opposed to service accounts) also need a quota project:
+geadm uses the target project automatically, which requires
+`serviceusage.services.use` there. If you don't have it, use `--quota-project`.
+
+Enabling connector/observability *logging* on a project is a one-time setup
+step requiring `roles/discoveryengine.agentspaceAdmin`; geadm only ever reads
+what's there.
