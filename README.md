@@ -1,12 +1,24 @@
 # geadm
 
-Read-only troubleshooting / debug / stats CLI for **Google Gemini Enterprise**
-(the Agentspace / Discovery Engine product, service `discoveryengine.googleapis.com` —
-not Gemini Code Assist).
+[![Gemini Enterprise](https://img.shields.io/badge/Gemini%20Enterprise-Discovery%20Engine-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com/gemini/enterprise)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-`geadm` never mutates anything: it only calls `list_*` / `get_*` methods on
-Discovery Engine, `entries.list` on Cloud Logging, and
-`list_time_series` / `list_metric_descriptors` on Cloud Monitoring.
+**geadm** is a command-line companion for operating **Google Gemini Enterprise**
+(the Agentspace / Discovery Engine platform, `discoveryengine.googleapis.com`).
+It gives platform teams fast answers to the questions that come up daily while
+running a Gemini Enterprise deployment: What's deployed? Are the connectors
+syncing? What are users asking, and what is Model Armor flagging? How close are
+we to a quota ceiling? Is everything healthy?
+
+It inventories engines, data stores, connectors and agents; inspects and tails
+the platform's Cloud Logging streams; summarises Cloud Monitoring metrics and
+quota utilisation; and runs a one-shot health check across all of it.
+
+By design, the current release is strictly read-only — every command works with
+viewer roles alone, so it can be handed to anyone on the team without change-risk.
+It may grow administrative verbs (e.g. triggering connector syncs, managing
+agents) in a future release.
 
 ## Install
 
@@ -16,49 +28,90 @@ uv tool install .          # from a checkout
 uv sync && uv run geadm --help
 ```
 
-## Auth & required roles
+## Authentication & roles
 
-Authentication is Application Default Credentials (`gcloud auth application-default login`).
-No key files are ever read or written.
-
-The caller needs only viewer roles:
+geadm uses Application Default Credentials (`gcloud auth application-default login`);
+it never reads or writes key files.
 
 | Role | Used by |
 |---|---|
 | `roles/discoveryengine.viewer` | `geadm ls …`, `geadm doctor` |
 | `roles/logging.viewer` | `geadm logs …`, `geadm doctor` |
-| `roles/monitoring.viewer` | `geadm stats`, `geadm doctor` |
+| `roles/monitoring.viewer` | `geadm stats`, `geadm quota`, `geadm doctor` |
 
-Note: *enabling* connector/observability logging on a project requires
-`roles/discoveryengine.agentspaceAdmin` — that is a one-time project setup step,
-not something `geadm` does or needs.
+User credentials (as opposed to service accounts) also need a quota project:
+geadm uses the target project automatically, which requires
+`serviceusage.services.use` there. If you don't have it, pass
+`--quota-project <other-project>` (or set `GOOGLE_CLOUD_QUOTA_PROJECT`) to bill
+a project you can use.
 
-When authenticating as a user (not a service account), the Discovery Engine API
-requires a quota project. `geadm` sets the target project as the quota project
-automatically, which additionally requires `roles/serviceusage.serviceUsageConsumer`
-(or any role containing `serviceusage.services.use`) on that project. If you lack
-that permission on the target project, pass `--quota-project <other-project>`
-(or set `GOOGLE_CLOUD_QUOTA_PROJECT`) to bill quota against a project you do
-hold it on.
+Enabling connector/observability *logging* on a project is a one-time setup
+step requiring `roles/discoveryengine.agentspaceAdmin`; geadm only ever reads
+what's there.
 
 ## Commands
 
+Global options: `--project` (defaults to the ADC project), `--location`
+(default `global`; regional locations are routed to
+`{location}-discoveryengine.googleapis.com`). Every command supports `--json`
+for machine-readable output, and time-windowed commands take `--since`
+(`30m`, `1h`, `24h`, `7d`).
+
+### Inventory — `geadm ls`
+
 ```sh
-geadm ls engines|datastores|connectors|agents   # inventory the default_collection hierarchy
-geadm logs connector [--datastore ID] [--severity ERROR] [--since 1h]
-geadm logs user <email> [--since 24h]           # ⚠ may surface end-user prompt/response content
-geadm stats [--engine ID] [--since 24h]         # query volume, latency, connector sync freshness
-geadm quota [--since 24h]                       # quota usage vs limits with % used
-geadm doctor                                    # composite read-only health check
+geadm ls engines|datastores|connectors|agents
 ```
 
-Global options: `--project` (defaults to the ADC project), `--location`
-(default `global`; regional locations use the
-`{location}-discoveryengine.googleapis.com` endpoint). Every command supports
-`--json` for machine output and log/stats commands take `--since` (`1h`, `24h`, `7d`).
+Walks the collection hierarchy: engines and data stores under
+`default_collection`, data connectors across *all* collections (each
+connector-backed source lives in its own), and agents per engine.
 
-### Sensitive output
+### Logs — `geadm logs`
 
-`geadm logs user <email>` can surface end-user prompt/response content and
-prints a warning banner before any output. Results depend on prompt/response
-logging being enabled on the project.
+```sh
+geadm logs connector [--datastore ID] [--severity ERROR] [--since 1h]
+geadm logs user [email] [--since 24h] [--follow]
+```
+
+`logs connector` shows data-connector sync activity. `logs user` shows
+end-user Gemini Enterprise activity — prompts, assistant replies, searches and
+Model Armor screening events — for one user, or all users when the email is
+omitted. `--follow`/`-f` tails either stream live (newline-delimited JSON with
+`--json`). When a log turns out to be empty, geadm tells you whether logging
+simply isn't enabled on the project or nothing matched your filter.
+
+> ⚠ **Sensitive output**: `geadm logs user` can surface end-user prompt and
+> response content when prompt/response logging is enabled on the project, and
+> prints a warning banner before any output.
+
+### Metrics — `geadm stats`
+
+```sh
+geadm stats [--engine ID] [--since 24h]
+```
+
+Discovers the project's `discoveryengine.googleapis.com` metrics at runtime and
+summarises query volume, latency and connector sync freshness over the window.
+
+### Quotas — `geadm quota`
+
+```sh
+geadm quota [--since 24h]
+```
+
+Pairs each Discovery Engine quota's latest usage with its limit per location:
+percent used (highlighted at ≥75% / ≥90%), byte quotas in human units, and
+counts of quota-exceeded events over the window — the quickest way to spot the
+next capacity ceiling before ingestion hits it.
+
+### Health check — `geadm doctor`
+
+```sh
+geadm doctor [--since 24h]
+```
+
+Runs the whole suite concurrently — inventory reachability, connector states
+and sync freshness, connector/API error logs, metric availability — and renders
+a live PASS/WARN/FAIL table. Exits non-zero if any check fails, so it drops
+straight into CI or cron.
