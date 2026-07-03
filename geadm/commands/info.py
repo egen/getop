@@ -46,6 +46,7 @@ def collect_info(clients: Clients) -> dict:
     results["license_configs"] = _collect_license_configs(
         clients, results.get("licenses") or [], errors
     )
+    _attach_engine_details(clients, results.get("engines") or [], errors)
 
     return {
         "project": clients.project,
@@ -80,6 +81,59 @@ def _collect_license_configs(
             }
         )
     return configs
+
+
+def _attach_engine_details(
+    clients: Clients, engines: list[dict], errors: dict[str, str]
+) -> None:
+    """Enrich engine dicts with the v1alpha-only detail fields (features map,
+    app type) that the published client's Engine proto doesn't carry."""
+
+    def fetch(engine: dict) -> None:
+        try:
+            data = clients.rest_get(f"v1alpha/{engine['name']}")
+        except Exception as exc:  # noqa: BLE001 - details are a nice-to-have
+            errors["engine_details"] = f"{type(exc).__name__}: {exc}"
+            return
+        engine["features"] = data.get("features") or {}
+        engine["app_type"] = data.get("appType")
+        engine["marketplace_agent_visibility"] = data.get("marketplaceAgentVisibility")
+
+    if engines:
+        with ThreadPoolExecutor(max_workers=min(8, len(engines))) as pool:
+            list(pool.map(fetch, engines))
+
+
+def normalize_features(raw: dict[str, str]) -> dict[str, bool]:
+    """Feature map -> capability name -> enabled.
+
+    GE encodes some toggles inverted (`disable-X = FEATURE_STATE_ON` means X
+    is off); strip the prefix and flip so every entry reads as a capability.
+    """
+    normalized: dict[str, bool] = {}
+    for key, value in (raw or {}).items():
+        on = value == "FEATURE_STATE_ON"
+        if key.startswith("disable-"):
+            normalized[key.removeprefix("disable-")] = not on
+        else:
+            normalized[key] = on
+    return normalized
+
+
+def _wrap_names(names: list[str], prefix: str, width: int = 52) -> list[str]:
+    """Chunk feature names into indented lines so cards stay compact."""
+    lines: list[str] = []
+    current = ""
+    for name in names:
+        candidate = f"{current} {name}".strip()
+        if current and len(candidate) > width:
+            lines.append(current)
+            current = name
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return [f"{prefix}{line}" for line in lines]
 
 
 def _connector_by_datastore(connectors: list[dict]) -> dict[str, dict]:
@@ -213,10 +267,12 @@ def _agent_lines(agents: list[dict], max_rows: int = _MAX_AGENT_ROWS) -> list[st
 
 def _engine_card(engine: dict, data: dict, ds_to_connector: dict[str, dict]) -> Panel:
     lines: list[Text] = []
+    app_type = (engine.get("app_type") or "").removeprefix("APP_TYPE_").lower()
+    app_note = f" · {app_type}" if app_type else ""
     lines.append(
         Text.from_markup(
             f"[dim]{(engine.get('solution_type') or '?').removeprefix('SOLUTION_TYPE_')}"
-            f" · {engine.get('industry_vertical') or '?'}"
+            f" · {engine.get('industry_vertical') or '?'}{app_note}"
             f" · created {(engine.get('create_time') or '?')[:10]}[/dim]"
         )
     )
@@ -255,6 +311,18 @@ def _engine_card(engine: dict, data: dict, ds_to_connector: dict[str, dict]) -> 
         breakdown += f" — {enabled} enabled, {defaults} user defaults"
     lines.append(Text.from_markup(f"[bold]Agents ({breakdown})[/bold]"))
     lines.extend(Text.from_markup(line) for line in _agent_lines(agents))
+
+    features = normalize_features(engine.get("features") or {})
+    if features:
+        on = sorted(name for name, enabled in features.items() if enabled)
+        off = sorted(name for name, enabled in features.items() if not enabled)
+        lines.append(
+            Text.from_markup(f"[bold]Features ({len(on)} on · {len(off)} off)[/bold]")
+        )
+        for line in _wrap_names(on, "  "):
+            lines.append(Text.from_markup(f"[green]✓[/green][dim]{line[1:]}[/dim]"))
+        for line in _wrap_names(off, "  "):
+            lines.append(Text.from_markup(f"[red]✗[/red][dim]{line[1:]}[/dim]"))
 
     return Panel(
         Group(*lines),

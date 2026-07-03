@@ -20,6 +20,18 @@ def _clients():
             "assistants/default_assistant/agents": {
                 "agents": [{"name": "x/agents/a-1", "displayName": "Deep Research", "state": "ENABLED"}]
             },
+            # must precede "/collections": FakeClients.rest_get matches by
+            # substring in insertion order, and the engine-detail path also
+            # contains "/collections".
+            "engines/e-1": {
+                "name": "projects/p/locations/global/collections/default_collection/engines/e-1",
+                "appType": "APP_TYPE_INTRANET",
+                "features": {
+                    "model-selector": "FEATURE_STATE_ON",
+                    "disable-image-generation": "FEATURE_STATE_ON",
+                    "disable-agent-sharing": "FEATURE_STATE_OFF",
+                },
+            },
             "/collections": {
                 "collections": [
                     {"name": "projects/p/locations/global/collections/coll-a"},
@@ -80,6 +92,37 @@ def test_collect_info_fetches_license_configs_for_seats():
     assert len(configs) == 1
     assert configs[0]["license_count"] == 419
     assert configs[0]["state"] == "ACTIVE"
+
+
+def test_normalize_features_inverts_disable_prefix():
+    normalized = info.normalize_features(
+        {
+            "model-selector": "FEATURE_STATE_ON",
+            "disable-image-generation": "FEATURE_STATE_ON",
+            "disable-agent-sharing": "FEATURE_STATE_OFF",
+            "session-sharing": "FEATURE_STATE_OFF",
+        }
+    )
+    assert normalized == {
+        "model-selector": True,
+        "image-generation": False,
+        "agent-sharing": True,
+        "session-sharing": False,
+    }
+
+
+def test_collect_info_attaches_engine_features():
+    data = info.collect_info(_clients())
+    engine_row = data["engines"][0]
+    assert engine_row["app_type"] == "APP_TYPE_INTRANET"
+    assert engine_row["features"]["model-selector"] == "FEATURE_STATE_ON"
+
+
+def test_wrap_names_chunks_lines():
+    names = [f"feature-{i}" for i in range(10)]
+    lines = info._wrap_names(names, "  ", width=30)
+    assert all(len(line) <= 34 for line in lines)
+    assert " ".join(l.strip() for l in lines) == " ".join(names)
 
 
 def _agent(name, state="PRIVATE"):
