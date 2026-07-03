@@ -359,11 +359,7 @@ def info_command(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Project-wide Gemini Enterprise overview: summary tiles plus a card per
-    engine showing its data stores (with connector sources), and agents.
-
-    Read-only; needs only roles/discoveryengine.viewer.
-    """
+    """Show a project overview."""
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
 

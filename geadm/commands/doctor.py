@@ -173,13 +173,9 @@ def doctor_command(
     ),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Composite read-only health check across engines, data stores, data
-    connectors, agents, connector/API error logs and monitoring metrics.
+    """Run a health check.
 
-    Checks run in parallel; the table updates live as each resolves.
-    Needs only the viewer roles (roles/discoveryengine.viewer,
-    roles/logging.viewer, roles/monitoring.viewer); performs no writes.
-    Exits 1 if any check FAILs.
+    Exits non-zero if any check fails.
     """
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))

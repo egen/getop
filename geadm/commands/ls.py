@@ -25,7 +25,7 @@ from geadm.auth import Clients, get_clients
 from geadm.render import output, table
 
 app = typer.Typer(
-    help="List Gemini Enterprise resources (read-only, roles/discoveryengine.viewer).",
+    help="List Gemini Enterprise resources.",
     no_args_is_help=True,
 )
 
@@ -222,12 +222,7 @@ def _agent_error_note(status: int | None) -> str:
 
 
 def collect_agents(clients: Clients) -> list[dict]:
-    """List assistant agents for every engine under the default collection.
-
-    Iterates `collect_engines` results to discover engine IDs (there is no
-    top-level "list all agents" surface). A per-engine failure (404/403/etc.)
-    is turned into a note row instead of aborting the whole command.
-    """
+    """List agents for each engine."""
     results: list[dict] = []
     for engine in collect_engines(clients):
         engine_id = engine["id"]
@@ -297,11 +292,7 @@ def engines(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """List Search/Chat engines under the default collection.
-
-    Read-only (EngineServiceClient.list_engines). Requires only
-    roles/discoveryengine.viewer.
-    """
+    """List engines."""
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
     data = collect_engines(clients)
@@ -329,11 +320,7 @@ def datastores(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """List data stores under the default collection.
-
-    Read-only (DataStoreServiceClient.list_data_stores). Requires only
-    roles/discoveryengine.viewer.
-    """
+    """List data stores."""
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
     data = collect_datastores(clients)
@@ -360,13 +347,7 @@ def connectors(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """List data connectors across all collections in the location.
-
-    Connector-backed sources (Gmail, Drive, Jira, …) each live in their own
-    collection, so this scans every collection's dataConnector singleton.
-    Read-only (v1alpha REST GET — no published Python client exists for this
-    surface). Requires only roles/discoveryengine.viewer.
-    """
+    """List data connectors."""
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
     try:
@@ -414,13 +395,7 @@ def agents(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """List assistant agents for every engine under the default collection.
-
-    Read-only (v1alpha REST GET per engine — no published Python client
-    exists for this surface). A per-engine 404/403 is reported as a note
-    rather than aborting the command. Requires only
-    roles/discoveryengine.viewer.
-    """
+    """List agents for each engine."""
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
     data = collect_agents(clients)
@@ -447,11 +422,7 @@ def licenses(
     ctx: typer.Context,
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """List Gemini Enterprise user licenses in the default user store.
-
-    Read-only (UserLicenseServiceClient.list_user_licenses). Requires only
-    roles/discoveryengine.viewer.
-    """
+    """List user licenses."""
     from geadm.render import err_console
 
     state = ctx.obj

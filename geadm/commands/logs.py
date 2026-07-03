@@ -34,11 +34,7 @@ from geadm import render
 from geadm.duration import since_rfc3339
 
 app = typer.Typer(
-    help=(
-        "Inspect Gemini Enterprise Cloud Logging output (read-only, "
-        "roles/logging.viewer). Enabling connector/observability logging on a "
-        "project requires roles/discoveryengine.agentspaceAdmin (one-time setup)."
-    ),
+    help="View and tail Gemini Enterprise logs.",
     no_args_is_help=True,
 )
 
@@ -615,13 +611,7 @@ def connector(
         "stop). With --json, emits newline-delimited JSON.",
     ),
 ) -> None:
-    """Show Discovery Engine data-connector activity logs.
-
-    Reading these logs only requires roles/logging.viewer. Emitting
-    connector/observability logs in the first place requires
-    roles/discoveryengine.agentspaceAdmin and connector logging enabled
-    on the Agentspace app/data connector.
-    """
+    """Show data-connector activity logs."""
     from geadm.auth import get_clients
 
     state = ctx.obj
@@ -677,13 +667,10 @@ def user(
         "stop). With --json, emits newline-delimited JSON.",
     ),
 ) -> None:
-    """Show end users' Gemini Enterprise activity (one user, or all).
+    """Show user activity for one user, or all users.
 
-    WARNING: results can include end-user prompt/response content when
-    prompt/response logging is enabled on the project. Reading these logs
-    only requires roles/logging.viewer; results depend entirely on
-    prompt/response (and other observability) logging having been enabled
-    for the project/app — if it isn't, this may return little or nothing.
+    Output may include prompt/response content when prompt/response
+    logging is enabled on the project.
     """
     # warn_banner MUST be the first thing printed: this command can surface
     # end-user prompt/response content, and callers need to see the warning
@@ -747,17 +734,10 @@ def ai(
         "stop). With --json, emits newline-delimited JSON.",
     ),
 ) -> None:
-    """Show the raw gen_ai prompt/response content stream.
+    """Stream raw prompt/response content logs.
 
-    Reads the two Gemini Enterprise gen_ai content logs directly:
-    gen_ai.user.message (prompts) and gen_ai.choice (model replies), as
-    documented in the Gemini Enterprise usage-audit-logs guide. This is
-    the rawest content view geadm offers — every entry IS prompt or reply
-    text, unfiltered by method or status.
-
-    NOTE: unlike `logs user`, these logs carry no user-identity field, so
-    entries here cannot be scoped to a principal. If you need per-user
-    activity, use `geadm logs user [email]` instead.
+    Entries carry no user identity; use `geadm logs user` for
+    per-user activity.
     """
     # warn_banner MUST be the first thing printed: every entry here is raw
     # prompt/response content, and callers need to see the warning before

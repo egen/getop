@@ -13,7 +13,7 @@ import typer
 
 app = typer.Typer(
     name="geadm",
-    help=__doc__,
+    help="CLI for Google Gemini Enterprise.",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -52,7 +52,7 @@ def main(
         envvar="GOOGLE_CLOUD_QUOTA_PROJECT",
     ),
 ) -> None:
-    """Read-only troubleshooting CLI for Google Gemini Enterprise."""
+    """CLI for Google Gemini Enterprise."""
     ctx.obj = AppState(project=project, location=location, quota_project=quota_project)
 
 
