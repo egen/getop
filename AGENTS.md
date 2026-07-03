@@ -44,3 +44,14 @@ or deprecated calls.
 `test (3.11/3.12/3.13)` checks must pass. Run `uv run pytest -q` locally before
 pushing. Verified live behaviour beats documentation — when docs and a live
 log/metric disagree, trust the live shape and record it in a test.
+
+### Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+`<type>(<scope>): <imperative summary>` — e.g. `feat(logs): add gen_ai
+content stream`, `fix(stats): humanize aggregate numbers`. Types: `feat`,
+`fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`. Scope is the
+command group or module (`ls`, `logs`, `stats`, `quota`, `doctor`, `auth`,
+`render`, `agents`, `ci`). PR titles follow the same convention — they become
+the squash-merge subject. Keep the body explaining *why*, and end agent
+commits with the Co-Authored-By trailer.
