@@ -1,14 +1,20 @@
 """geadm doctor — composite read-only health check for Gemini Enterprise.
 
 Reuses the collect functions from ls/logs/stats; issues only list/get reads.
+Checks run concurrently and the results table renders live, with a spinner
+on each row until that check resolves.
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 import typer
+from rich.live import Live
+from rich.spinner import Spinner
+from rich.text import Text
 
 from geadm import duration, render
 from geadm.auth import Clients, get_clients
@@ -18,6 +24,8 @@ from geadm.commands import stats as stats_cmd
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 _STATUS_STYLE = {OK: "bold green", WARN: "bold yellow", FAIL: "bold red"}
+
+Check = tuple[str, Callable[[], tuple[str, str]]]
 
 
 def _check(name: str, fn: Callable[[], tuple[str, str]]) -> dict:
@@ -40,13 +48,10 @@ def _sync_age(last_sync_time: str | None) -> timedelta | None:
     return datetime.now(timezone.utc) - ts
 
 
-def run_doctor(clients: Clients, since: str) -> list[dict]:
-    """Execute all health checks and return JSON-safe result rows."""
-    results: list[dict] = []
-    engines: list[dict] = []
+def _build_checks(clients: Clients, since: str) -> list[Check]:
+    """Independent health checks, safe to run concurrently."""
 
     def check_engines() -> tuple[str, str]:
-        nonlocal engines
         engines = ls_cmd.collect_engines(clients)
         if not engines:
             return WARN, "no engines in default_collection"
@@ -81,7 +86,8 @@ def run_doctor(clients: Clients, since: str) -> list[dict]:
     def check_agents() -> tuple[str, str]:
         agents = ls_cmd.collect_agents(clients)
         real = [a for a in agents if not a.get("note")]
-        return OK, f"{len(real)} agent(s) across {len(engines)} engine(s)"
+        engine_count = len({a.get("engine_id") for a in agents if a.get("engine_id")})
+        return OK, f"{len(real)} agent(s) across {engine_count} engine(s)"
 
     def check_connector_errors() -> tuple[str, str]:
         filter_str = logs_cmd.connector_filter(
@@ -109,7 +115,9 @@ def run_doctor(clients: Clients, since: str) -> list[dict]:
         return OK, f"no discoveryengine API ERROR logs since {since}"
 
     def check_metrics() -> tuple[str, str]:
-        data = stats_cmd.collect_stats(clients, since=since)
+        # Time-series values are only fetched for connector metrics; querying
+        # every discovered metric type would take minutes on busy projects.
+        data = stats_cmd.collect_stats(clients, since=since, categories={"connector"})
         discovered = data.get("metrics_discovered") or []
         if not discovered:
             return WARN, "no discoveryengine.googleapis.com metrics discovered"
@@ -117,14 +125,45 @@ def run_doctor(clients: Clients, since: str) -> list[dict]:
         note = f", freshest connector point {freshest}" if freshest else ""
         return OK, f"{len(discovered)} metric type(s) discovered{note}"
 
-    results.append(_check("engines", check_engines))
-    results.append(_check("datastores", check_datastores))
-    results.append(_check("data connectors", check_connectors))
-    results.append(_check("agents", check_agents))
-    results.append(_check(f"connector errors ({since})", check_connector_errors))
-    results.append(_check(f"API errors ({since})", check_api_errors))
-    results.append(_check("monitoring metrics", check_metrics))
-    return results
+    return [
+        ("engines", check_engines),
+        ("datastores", check_datastores),
+        ("data connectors", check_connectors),
+        ("agents", check_agents),
+        (f"connector errors ({since})", check_connector_errors),
+        (f"API errors ({since})", check_api_errors),
+        ("monitoring metrics", check_metrics),
+    ]
+
+
+def run_doctor(clients: Clients, since: str) -> list[dict]:
+    """Execute all health checks concurrently and return JSON-safe rows."""
+    checks = _build_checks(clients, since)
+    results: list[dict | None] = [None] * len(checks)
+    with ThreadPoolExecutor(max_workers=len(checks)) as pool:
+        futures = {
+            pool.submit(_check, name, fn): i for i, (name, fn) in enumerate(checks)
+        }
+        for future in as_completed(futures):
+            results[futures[future]] = future.result()
+    return [r for r in results if r is not None]
+
+
+def _result_table(title: str, checks: list[Check], results: list[dict | None]) -> Any:
+    rows: list[list[Any]] = []
+    for i, (name, _fn) in enumerate(checks):
+        result = results[i]
+        if result is None:
+            rows.append([name, Spinner("dots", style="cyan"), Text("checking…", style="dim")])
+        else:
+            rows.append(
+                [
+                    result["check"],
+                    Text(result["status"], style=_STATUS_STYLE.get(result["status"], "white")),
+                    result["detail"],
+                ]
+            )
+    return render.table(title, ["Check", "Status", "Detail"], rows)
 
 
 def doctor_command(
@@ -134,31 +173,40 @@ def doctor_command(
     ),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Composite read-only health check across engines, data stores, the data
-    connector, agents, connector/API error logs and monitoring metrics.
+    """Composite read-only health check across engines, data stores, data
+    connectors, agents, connector/API error logs and monitoring metrics.
 
+    Checks run in parallel; the table updates live as each resolves.
     Needs only the viewer roles (roles/discoveryengine.viewer,
     roles/logging.viewer, roles/monitoring.viewer); performs no writes.
     Exits 1 if any check FAILs.
     """
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
-    results = run_doctor(clients, since)
 
-    def styled(row: dict) -> list[Any]:
-        from rich.text import Text
+    if as_json:
+        results = run_doctor(clients, since)
+        render.emit_json(results)
+        if any(r["status"] == FAIL for r in results):
+            raise typer.Exit(code=1)
+        return
 
-        return [
-            row["check"],
-            Text(row["status"], style=_STATUS_STYLE.get(row["status"], "white")),
-            row["detail"],
-        ]
+    checks = _build_checks(clients, since)
+    results: list[dict | None] = [None] * len(checks)
+    title = f"geadm doctor — {clients.project} ({clients.location})"
 
-    renderable = render.table(
-        f"geadm doctor — {clients.project} ({clients.location})",
-        ["Check", "Status", "Detail"],
-        [styled(r) for r in results],
-    )
-    render.output(results, renderable, as_json)
-    if any(r["status"] == FAIL for r in results):
+    with Live(
+        _result_table(title, checks, results),
+        console=render.console,
+        refresh_per_second=10,
+    ) as live:
+        with ThreadPoolExecutor(max_workers=len(checks)) as pool:
+            futures = {
+                pool.submit(_check, name, fn): i for i, (name, fn) in enumerate(checks)
+            }
+            for future in as_completed(futures):
+                results[futures[future]] = future.result()
+                live.update(_result_table(title, checks, results))
+
+    if any(r is not None and r["status"] == FAIL for r in results):
         raise typer.Exit(code=1)

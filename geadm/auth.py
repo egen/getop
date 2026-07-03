@@ -11,6 +11,7 @@ roles/monitoring.viewer.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
@@ -38,6 +39,16 @@ class Clients:
     location: str = "global"
     quota_project: str | None = None
     _cache: dict[str, Any] = field(default_factory=dict, repr=False)
+    # RLock: building a client re-enters _cached for the shared credentials.
+    _lock: Any = field(default_factory=threading.RLock, repr=False)
+
+    def _cached(self, key: str, build: Any) -> Any:
+        """Thread-safe lazy construction (doctor runs checks concurrently)."""
+        if key not in self._cache:
+            with self._lock:
+                if key not in self._cache:
+                    self._cache[key] = build()
+        return self._cache[key]
 
     @property
     def _credentials(self) -> Any:
@@ -47,7 +58,7 @@ class Clients:
         such calls; billing quota against the inspected project matches what
         `gcloud auth application-default set-quota-project` would do.
         """
-        if "credentials" not in self._cache:
+        def build() -> Any:
             credentials, _ = google.auth.default(
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
@@ -55,8 +66,9 @@ class Clients:
                 credentials = credentials.with_quota_project(
                     self.quota_project or self.project
                 )
-            self._cache["credentials"] = credentials
-        return self._cache["credentials"]
+            return credentials
+
+        return self._cached("credentials", build)
 
     # ---- Discovery Engine -------------------------------------------------
     def discoveryengine(self, client_cls: type) -> Any:
@@ -65,37 +77,35 @@ class Clients:
         api_endpoint set when location != "global".
         """
         key = f"de:{client_cls.__module__}.{client_cls.__qualname__}"
-        if key not in self._cache:
+
+        def build() -> Any:
             endpoint = _regional_endpoint(self.location)
             options = ClientOptions(api_endpoint=endpoint) if endpoint else None
-            self._cache[key] = client_cls(
-                credentials=self._credentials, client_options=options
-            )
-        return self._cache[key]
+            return client_cls(credentials=self._credentials, client_options=options)
+
+        return self._cached(key, build)
 
     # ---- Cloud Logging ----------------------------------------------------
     @property
     def logging(self) -> Any:
         """google.cloud.logging_v2.Client scoped to the project (entries.list only)."""
-        if "logging" not in self._cache:
+        def build() -> Any:
             from google.cloud import logging_v2
 
-            self._cache["logging"] = logging_v2.Client(
-                project=self.project, credentials=self._credentials
-            )
-        return self._cache["logging"]
+            return logging_v2.Client(project=self.project, credentials=self._credentials)
+
+        return self._cached("logging", build)
 
     # ---- Cloud Monitoring ---------------------------------------------------
     @property
     def monitoring(self) -> Any:
         """monitoring_v3.MetricServiceClient (list_time_series / descriptors only)."""
-        if "monitoring" not in self._cache:
+        def build() -> Any:
             from google.cloud import monitoring_v3
 
-            self._cache["monitoring"] = monitoring_v3.MetricServiceClient(
-                credentials=self._credentials
-            )
-        return self._cache["monitoring"]
+            return monitoring_v3.MetricServiceClient(credentials=self._credentials)
+
+        return self._cached("monitoring", build)
 
     # ---- REST fallback (GET only) -------------------------------------------
     def rest_get(self, path: str, params: dict[str, str] | None = None) -> dict:
@@ -108,12 +118,14 @@ class Clients:
         `path` is the versioned resource path, e.g.
         "v1alpha/projects/p/locations/global/collections/default_collection/dataConnector".
         """
-        if "session" not in self._cache:
+        def build() -> Any:
             from google.auth.transport.requests import AuthorizedSession
 
-            self._cache["session"] = AuthorizedSession(self._credentials)
+            return AuthorizedSession(self._credentials)
+
+        session = self._cached("session", build)
         host = _regional_endpoint(self.location) or "discoveryengine.googleapis.com"
-        resp = self._cache["session"].get(
+        resp = session.get(
             f"https://{host}/{path.lstrip('/')}", params=params or {}, timeout=60
         )
         resp.raise_for_status()

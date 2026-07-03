@@ -35,13 +35,22 @@ def severity_style(severity: str | None) -> str:
     return SEVERITY_STYLES.get((severity or "DEFAULT").upper(), "white")
 
 
+def _cell(value: Any) -> Any:
+    """Rich renderables (Text, Spinner, …) pass through; everything else is str'd."""
+    if value is None:
+        return ""
+    if hasattr(value, "__rich_console__") or hasattr(value, "__rich__"):
+        return value
+    return str(value)
+
+
 def table(title: str, columns: Sequence[str], rows: Iterable[Sequence[Any]]) -> Table:
     """Build a consistently styled Rich table."""
     t = Table(title=title, title_style="bold", header_style="bold blue", expand=False)
     for col in columns:
         t.add_column(col, overflow="fold")
     for row in rows:
-        t.add_row(*("" if cell is None else str(cell) for cell in row))
+        t.add_row(*(_cell(cell) for cell in row))
     return t
 
 

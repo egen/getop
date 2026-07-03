@@ -98,13 +98,22 @@ def _point_value(point: Any) -> Optional[float]:
     return None
 
 
-def collect_stats(clients: Any, since: str, engine: str | None = None) -> dict:
+def collect_stats(
+    clients: Any,
+    since: str,
+    engine: str | None = None,
+    categories: set[str] | None = None,
+) -> dict:
     """Discover discoveryengine metrics and summarise volume/latency/connector sync.
 
     Pure, read-only: list_metric_descriptors + list_time_series only.
     Raises ValueError if `since` is malformed, and propagates any
     google.api_core.exceptions raised by the API (e.g. PermissionDenied)
     so the caller can render a clean error.
+
+    `categories` restricts which metric categories ("query_volume", "latency",
+    "connector") get per-metric time-series queries; discovery still lists
+    everything. None means all categories (the default for `geadm stats`).
     """
     start_time = since_timestamp(since)  # raises ValueError on bad --since
     end_time = datetime.now(timezone.utc)
@@ -137,6 +146,8 @@ def collect_stats(clients: Any, since: str, engine: str | None = None) -> dict:
 
     for descriptor in descriptors:
         category = _category_for(descriptor.type, descriptor.value_type)
+        if categories is not None and category not in categories:
+            continue
         aggregation, aggregate_label = _aggregation_for(
             descriptor.metric_kind, descriptor.value_type, category, alignment_seconds
         )
