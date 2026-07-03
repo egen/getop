@@ -137,6 +137,28 @@ $ geadm logs user --since 24h
 The `WARNING` row is Model Armor flagging a prompt-injection attempt. Tail it
 live with `geadm logs user -f`, or pull full transcripts with `--json`.
 
+### `geadm armor` — Model Armor violations
+
+```sh
+geadm armor [--since 24h] [--all]
+```
+
+Surfaces prompts and responses that Model Armor flagged, with the filters
+that tripped and their confidence (jailbreak, RAI categories, CSAM,
+malicious URIs). Violations only by default; `--all` includes clean
+screenings. Carries no user identity — pair with `geadm logs user`.
+
+```console
+$ geadm armor --since 7d
+                          Model Armor violations (7d)
+┏━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Time     ┃ Direction ┃ Match       ┃ Filters                   ┃ Content        ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ 12:49:03 │ prompt    │ MATCH_FOUND │ pi_and_jailbreak(HIGH),   │ Ignore all     │
+│          │           │             │ rai:dangerous(HIGH)       │ previous inst… │
+└──────────┴───────────┴─────────────┴───────────────────────────┴────────────────┘
+```
+
 ### `geadm stats` — metrics
 
 ```sh

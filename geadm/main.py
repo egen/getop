@@ -59,6 +59,7 @@ def main(
 # ---- command groups (implemented in geadm/commands/) -----------------------
 
 from geadm.commands import doctor as doctor_cmd  # noqa: E402
+from geadm.commands import armor as armor_cmd  # noqa: E402
 from geadm.commands import info as info_cmd  # noqa: E402
 from geadm.commands import logs as logs_cmd  # noqa: E402
 from geadm.commands import ls as ls_cmd  # noqa: E402
@@ -70,6 +71,7 @@ app.command(name="stats")(stats_cmd.stats_command)
 app.command(name="quota")(stats_cmd.quota_command)
 app.command(name="doctor")(doctor_cmd.doctor_command)
 app.command(name="info")(info_cmd.info_command)
+app.command(name="armor")(armor_cmd.armor_command)
 
 
 def _build_commit() -> str:
