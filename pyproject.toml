@@ -1,6 +1,6 @@
 [project]
 name = "geadm"
-version = "0.1.0"
+version = "0.2.0"
 description = "CLI for Google Gemini Enterprise"
 readme = "README.md"
 license = { text = "MIT" }
@@ -50,6 +50,9 @@ dev = ["pytest>=8"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["geadm"]

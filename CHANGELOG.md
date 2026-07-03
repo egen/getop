@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/egen/geadm/compare/v0.1.1...v0.2.0) (2026-07-03)
+
+
+### Features
+
+* **cli:** add version command with build commit ([#17](https://github.com/egen/geadm/issues/17)) ([737f0e5](https://github.com/egen/geadm/commit/737f0e5b8b0838b45b2c70d3df0a075941972a38))
+
+## [0.1.1](https://github.com/egen/geadm/compare/v0.1.0...v0.1.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** harden for public release per BOFH review ([#13](https://github.com/egen/geadm/issues/13)) ([e3fadf0](https://github.com/egen/geadm/commit/e3fadf09a2bfd85d4b29a466e509095fc1cfc769))
+* **cli:** concise help output ([#14](https://github.com/egen/geadm/issues/14)) ([c1f4ee6](https://github.com/egen/geadm/commit/c1f4ee6b68e8f31af8aaad744411a457605e04a7))
+
 ## 0.1.0 (2026-07-03)
 
 

@@ -450,13 +450,7 @@ def quota_command(
     ),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Discovery Engine quota usage vs limits, with percent used.
-
-    Discovers quota/*/usage|limit|exceeded metrics at runtime and shows the
-    latest usage against the limit per quota and location, highlighting
-    anything ≥75% (yellow) or ≥90% (red). Read-only: needs only
-    roles/monitoring.viewer.
-    """
+    """Show quota usage against limits."""
     from geadm.auth import get_clients
 
     state = ctx.obj
@@ -501,13 +495,7 @@ def stats_command(
     ),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Query volume, latency and connector sync freshness for Gemini Enterprise.
-
-    Discovers discoveryengine.googleapis.com metric descriptors at runtime
-    (the published metric set is not reliably documented), then summarises
-    request/query counts, latency, and the freshest connector sync signal
-    over the --since window. Read-only: needs only roles/monitoring.viewer.
-    """
+    """Show query volume, latency and connector sync freshness."""
     from geadm.auth import get_clients
 
     state = ctx.obj
