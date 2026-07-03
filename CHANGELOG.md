@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/egen/geadm/compare/v0.1.0...v0.1.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** harden for public release per BOFH review ([#13](https://github.com/egen/geadm/issues/13)) ([e3fadf0](https://github.com/egen/geadm/commit/e3fadf09a2bfd85d4b29a466e509095fc1cfc769))
+* **cli:** concise help output ([#14](https://github.com/egen/geadm/issues/14)) ([c1f4ee6](https://github.com/egen/geadm/commit/c1f4ee6b68e8f31af8aaad744411a457605e04a7))
+
 ## 0.1.0 (2026-07-03)
 
 
