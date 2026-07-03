@@ -45,6 +45,22 @@ def test_help_is_concise_no_iam_or_api_internals(app_runner):
         assert banned not in combined, f"{banned!r} leaked into help output"
 
 
+def test_version_command(app_runner):
+    result = app_runner.invoke(app, ["version"])
+    assert result.exit_code == 0
+    assert "geadm " in result.output
+    assert "commit" in result.output
+
+
+def test_version_json(app_runner):
+    import json
+
+    result = app_runner.invoke(app, ["version", "--json"])
+    data = json.loads(result.output)
+    assert set(data) == {"version", "tag", "commit"}
+    assert data["tag"] == f"v{data['version']}"
+
+
 def test_logs_user_help_mentions_prompt_logging(app_runner):
     out = app_runner.invoke(app, ["logs", "user", "--help"]).output
     assert "prompt/response" in out
