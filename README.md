@@ -59,6 +59,17 @@ Global options: `--project` (defaults to the ADC project), `--location`
 for machine-readable output, and time-windowed commands take `--since`
 (`30m`, `1h`, `24h`, `7d`).
 
+### Overview — `geadm info`
+
+```sh
+geadm info
+```
+
+Project-wide dashboard: summary tiles (engines, data stores, connector
+health, agents, license seats/activation/unmet demand) plus a card per
+engine showing its data stores with their connector sources and its agents
+("My Agent" user defaults are grouped into a single ×N line).
+
 ### Inventory — `geadm ls`
 
 ```sh
