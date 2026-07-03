@@ -45,12 +45,31 @@ def test_base_clauses_have_no_timestamp():
     assert not any(
         "timestamp" in c for c in logs.connector_base_clauses("p", None, "ERROR")
     )
+    assert not any("timestamp" in c for c in logs.ai_base_clauses("p"))
+
+
+def test_ai_filter_ors_both_gen_ai_logs_with_encoded_log_names():
+    f = logs.ai_filter("proj", "24h")
+    assert (
+        'logName=("projects/proj/logs/discoveryengine.googleapis.com%2Fgen_ai.user.message" '
+        'OR "projects/proj/logs/discoveryengine.googleapis.com%2Fgen_ai.choice")' in f
+    )
+    assert "timestamp>=" in f
+
+
+def test_ai_base_clauses_have_no_timestamp_but_have_both_logs():
+    clauses = logs.ai_base_clauses("proj")
+    combined = "\n".join(clauses)
+    assert "gen_ai.user.message" in combined
+    assert "gen_ai.choice" in combined
+    assert " OR " in combined
+    assert not any("timestamp" in c for c in clauses)
 
 
 # ---- normalization -------------------------------------------------------------
 
 
-def _entry(payload, severity="INFO"):
+def _entry(payload, severity="INFO", labels=None):
     return SimpleNamespace(
         payload=payload,
         severity=severity,
@@ -58,6 +77,7 @@ def _entry(payload, severity="INFO"):
         timestamp=None,
         insert_id="abc",
         resource=SimpleNamespace(type="consumed_api", labels={"service": "s"}),
+        labels=labels or {},
     )
 
 
@@ -112,6 +132,42 @@ def test_normalize_connector_capital_log_metadata():
 def test_normalize_text_payload():
     row = logs._normalize_entry(_entry("plain text line"))
     assert row["message"] == "plain text line"
+
+
+def test_normalize_gen_ai_user_message():
+    row = logs._normalize_entry(
+        _entry(
+            {"content": "what is our refund policy?"},
+            labels={"event.name": "gen_ai.user.message", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == "what is our refund policy?"
+    assert row["event"] == "gen_ai.user.message"
+    # gen_ai logs carry no identity field
+    assert row["user"] is None
+
+
+def test_normalize_gen_ai_choice_with_index():
+    row = logs._normalize_entry(
+        _entry(
+            {"content": "Our refund policy allows returns within 30 days.", "index": 0},
+            labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
+        )
+    )
+    assert row["message"] == "Our refund policy allows returns within 30 days."
+    assert row["event"] == "gen_ai.choice"
+
+
+def test_normalize_entry_without_labels_has_no_event():
+    row = logs._normalize_entry(_entry("plain text line"))
+    assert row["event"] is None
+
+
+def test_event_label_maps_gen_ai_events():
+    assert logs._event_label("gen_ai.user.message") == "prompt"
+    assert logs._event_label("gen_ai.choice") == "reply"
+    assert logs._event_label(None) is None
+    assert logs._event_label("something.else") == "something.else"
 
 
 # ---- tail formatting -----------------------------------------------------------

@@ -4,13 +4,17 @@ Strictly read-only: the only RPC used is Cloud Logging's entries.list
 (via google.cloud.logging_v2.Client.list_entries). This module never
 writes or deletes log entries, sinks, or metrics.
 
-Two subcommands:
+Three subcommands:
 
   logs connector   Discovery Engine data-connector activity
                     (logName=".../connector_activity").
   logs user        Per-end-user Gemini Enterprise activity, scoped by
                     jsonPayload.userIamPrincipal on the
                     gemini_enterprise_user_activity log.
+  logs ai          Raw gen_ai prompt/response content
+                    (gen_ai.user.message / gen_ai.choice). These logs carry
+                    no user-identity field, so they cannot be scoped to a
+                    principal — use `logs user` for identity-scoped activity.
 
 Reading logs only requires roles/logging.viewer. Actually *emitting*
 connector/observability logs in the first place requires the caller (or
@@ -127,6 +131,33 @@ def user_base_clauses(project: str, email: Optional[str]) -> list[str]:
     return clauses
 
 
+_AI_PROMPT_LOG_ID = "discoveryengine.googleapis.com%2Fgen_ai.user.message"
+_AI_REPLY_LOG_ID = "discoveryengine.googleapis.com%2Fgen_ai.choice"
+
+
+def ai_filter(project: str, since: str) -> str:
+    """Build the Cloud Logging filter for `logs ai`.
+
+    Gemini Enterprise writes raw gen_ai content to two logs:
+    gen_ai.user.message (prompts) and gen_ai.choice (model replies), per
+    the Gemini Enterprise usage-audit-logs guide. Neither carries a user
+    identity field, so this filter (unlike connector/user) never scopes
+    by principal.
+    """
+    clauses = ai_base_clauses(project)
+    clauses.append(f'timestamp>="{since_rfc3339(since)}"')
+    return "\n".join(clauses)
+
+
+def ai_base_clauses(project: str) -> list[str]:
+    """ai_filter without the timestamp clause (follow mode appends its own
+    cursor)."""
+    return [
+        f'logName=("projects/{project}/logs/{_AI_PROMPT_LOG_ID}" OR '
+        f'"projects/{project}/logs/{_AI_REPLY_LOG_ID}")'
+    ]
+
+
 # ---- entry normalization -----------------------------------------------------
 
 
@@ -190,6 +221,10 @@ def _extract_message(payload: Any, payload_dict: dict) -> str:
     status = payload_dict.get("status")
     if isinstance(status, Mapping) and status.get("message"):
         return str(status["message"])
+    # gen_ai.user.message / gen_ai.choice: jsonPayload is just {"content": "..."}
+    # (choice entries add an "index" field alongside content).
+    if payload_dict.get("content"):
+        return str(payload_dict["content"])
     method_name = payload_dict.get("methodName") or _log_metadata(payload_dict).get(
         "methodName"
     )
@@ -220,6 +255,17 @@ def _extract_entity_name(payload_dict: dict) -> Optional[str]:
     return str(name) if name else None
 
 
+def _extract_event(labels: Mapping) -> Optional[str]:
+    """Raw event.name label (e.g. "gen_ai.user.message"/"gen_ai.choice"),
+    when the LogEntry carries one. This is the top-level LogEntry.labels
+    map, not jsonPayload — Cloud Logging keeps gen_ai event typing there
+    rather than in the (minimal) content payload."""
+    if not isinstance(labels, Mapping):
+        return None
+    name = labels.get("event.name")
+    return str(name) if name else None
+
+
 def _normalize_entry(entry: Any) -> dict:
     """Convert a google.cloud.logging_v2 LogEntry into a JSON-safe dict."""
     payload = getattr(entry, "payload", None)
@@ -228,6 +274,8 @@ def _normalize_entry(entry: Any) -> dict:
     resource = getattr(entry, "resource", None)
     resource_type = getattr(resource, "type", None)
     resource_labels = getattr(resource, "labels", None) or {}
+
+    entry_labels = getattr(entry, "labels", None) or {}
 
     timestamp = getattr(entry, "timestamp", None)
 
@@ -240,6 +288,7 @@ def _normalize_entry(entry: Any) -> dict:
         "entity_name": _extract_entity_name(payload_dict),
         "user": payload_dict.get("userIamPrincipal"),
         "reply": payload_dict.get("serviceTextReply"),
+        "event": _extract_event(entry_labels),
         "resource_type": resource_type,
         "resource_labels": dict(resource_labels),
         "insert_id": getattr(entry, "insert_id", None),
@@ -321,14 +370,33 @@ def _snippet(text: Optional[str], max_chars: int) -> Optional[str]:
     return flat[: max_chars - 1].rstrip() + "…"
 
 
+_EVENT_LABELS = {
+    "gen_ai.user.message": "prompt",
+    "gen_ai.choice": "reply",
+}
+
+
+def _event_label(event: Optional[str]) -> Optional[str]:
+    """Friendly display name for a raw labels["event.name"] value."""
+    if event is None:
+        return None
+    return _EVENT_LABELS.get(event, event)
+
+
 def _render_table(
     title: str,
     rows: list[dict],
     show_entity: bool,
     show_user: bool = False,
     show_reply: bool = False,
+    show_event: bool = False,
+    message_column: str = "Message",
+    snippet_chars: Optional[int] = None,
 ) -> Any:
-    columns = ["Time", "Severity", "Message"]
+    columns = ["Time", "Severity"]
+    if show_event:
+        columns.append("Event")
+    columns.append(message_column)
     if show_user:
         columns.insert(2, "User")
     if show_entity:
@@ -345,7 +413,12 @@ def _render_table(
             cells.append(row.get("entity_name"))
         if show_user:
             cells.append(row.get("user"))
-        cells.append(row.get("message"))
+        if show_event:
+            cells.append(_event_label(row.get("event")))
+        message = row.get("message")
+        if snippet_chars:
+            message = _snippet(message, snippet_chars)
+        cells.append(message)
         if show_reply:
             cells.append(_snippet(row.get("reply"), 200))
         table_rows.append(cells)
@@ -590,4 +663,76 @@ def user(
             "Observability / prompt-response logging is likely not enabled for "
             "this project (requires roles/discoveryengine.agentspaceAdmin), or "
             "this principal has no activity.",
+        )
+
+
+@app.command()
+def ai(
+    ctx: typer.Context,
+    since: str = typer.Option(
+        "24h",
+        "--since",
+        help="Look back window, e.g. 30m, 1h, 24h, 7d.",
+    ),
+    limit: int = typer.Option(50, "--limit", help="Maximum entries to return."),
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+    follow: bool = typer.Option(
+        False,
+        "--follow",
+        "-f",
+        help="Stream new entries as they arrive (polls every 5s; Ctrl+C to "
+        "stop). With --json, emits newline-delimited JSON.",
+    ),
+) -> None:
+    """Show the raw gen_ai prompt/response content stream.
+
+    Reads the two Gemini Enterprise gen_ai content logs directly:
+    gen_ai.user.message (prompts) and gen_ai.choice (model replies), as
+    documented in the Gemini Enterprise usage-audit-logs guide. This is
+    the rawest content view geadm offers — every entry IS prompt or reply
+    text, unfiltered by method or status.
+
+    NOTE: unlike `logs user`, these logs carry no user-identity field, so
+    entries here cannot be scoped to a principal. If you need per-user
+    activity, use `geadm logs user [email]` instead.
+    """
+    # warn_banner MUST be the first thing printed: every entry here is raw
+    # prompt/response content, and callers need to see the warning before
+    # anything else regardless of --json (it goes to stderr).
+    render.warn_banner(
+        "Output is raw end-user prompt/response content "
+        "(gen_ai.user.message / gen_ai.choice)."
+    )
+
+    from geadm.auth import get_clients
+
+    state = ctx.obj
+    clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
+
+    filter_str = ai_filter(clients.project, since)
+    base_clauses = ai_base_clauses(clients.project)
+
+    if follow:
+        _follow(clients, "\n".join(base_clauses), show_user=False, as_json=as_json)
+        return
+
+    rows = collect_entries(clients, filter_str, limit)
+
+    title = f"gen_ai prompt/response content ({since})"
+    table_ = _render_table(
+        title,
+        rows,
+        show_entity=False,
+        show_event=True,
+        message_column="Content",
+        snippet_chars=200,
+    )
+    render.output(rows, table_, as_json)
+    if not rows:
+        _print_empty_hint(
+            clients,
+            _AI_PROMPT_LOG_ID,
+            "gen_ai prompt/response content",
+            "Prompt/response content logging may not be enabled for this "
+            "project (requires roles/discoveryengine.agentspaceAdmin).",
         )

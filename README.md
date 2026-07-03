@@ -75,18 +75,22 @@ licenses in the project's `default_user_store`.
 ```sh
 geadm logs connector [--datastore ID] [--severity ERROR] [--since 1h]
 geadm logs user [email] [--since 24h] [--follow]
+geadm logs ai [--since 24h] [--follow]
 ```
 
 `logs connector` shows data-connector sync activity. `logs user` shows
 end-user Gemini Enterprise activity — prompts, assistant replies, searches and
 Model Armor screening events — for one user, or all users when the email is
-omitted. `--follow`/`-f` tails either stream live (newline-delimited JSON with
-`--json`). When a log turns out to be empty, geadm tells you whether logging
-simply isn't enabled on the project or nothing matched your filter.
+omitted. `logs ai` streams the raw `gen_ai.user.message`/`gen_ai.choice`
+content logs (prompt and reply text with no identity field, so it cannot be
+scoped per user — use `logs user` for that). `--follow`/`-f` tails either
+stream live (newline-delimited JSON with `--json`). When a log turns out to be
+empty, geadm tells you whether logging simply isn't enabled on the project or
+nothing matched your filter.
 
-> ⚠ **Sensitive output**: `geadm logs user` can surface end-user prompt and
-> response content when prompt/response logging is enabled on the project, and
-> prints a warning banner before any output.
+> ⚠ **Sensitive output**: `geadm logs user` and `geadm logs ai` can surface
+> end-user prompt and response content when prompt/response logging is
+> enabled on the project, and print a warning banner before any output.
 
 ### Metrics — `geadm stats`
 
