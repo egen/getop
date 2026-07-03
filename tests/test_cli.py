@@ -61,6 +61,55 @@ def test_version_json(app_runner):
     assert data["tag"] == f"v{data['version']}"
 
 
+def test_update_check_reports_when_current(app_runner, monkeypatch):
+    from geadm import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "9.9.9")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "9.9.9")
+    result = app_runner.invoke(app, ["update", "--check"])
+    assert result.exit_code == 0
+    assert "up to date" in result.output
+
+
+def test_update_check_reports_when_outdated(app_runner, monkeypatch):
+    from geadm import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "0.1.0")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "0.2.0")
+    result = app_runner.invoke(app, ["update", "--check"])
+    assert result.exit_code == 0
+    assert "0.1.0" in result.output and "0.2.0" in result.output
+
+
+def test_update_offline_fails_cleanly(app_runner, monkeypatch):
+    from geadm import main
+
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: None)
+    result = app_runner.invoke(app, ["update", "--check"])
+    assert result.exit_code == 1
+
+
+def test_update_json(app_runner, monkeypatch):
+    import json
+
+    from geadm import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "0.1.0")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "0.2.0")
+    result = app_runner.invoke(app, ["update", "--json"])
+    data = json.loads(result.output)
+    assert data["current"] == "0.1.0"
+    assert data["latest"] == "0.2.0"
+    assert data["outdated"] is True
+
+
+def test_version_tuple_compares():
+    from geadm.main import _version_tuple
+
+    assert _version_tuple("0.2.0") > _version_tuple("0.1.9")
+    assert _version_tuple("0.10.0") > _version_tuple("0.9.0")
+
+
 def test_logs_user_help_mentions_prompt_logging(app_runner):
     out = app_runner.invoke(app, ["logs", "user", "--help"]).output
     assert "prompt/response" in out

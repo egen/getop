@@ -212,10 +212,21 @@ $ geadm doctor
 
 ```console
 $ geadm version
-geadm 0.2.0 (v0.2.0, commit 90bd33a)
+geadm 0.2.2 (v0.2.2, commit a1854e8)
 ```
 
 Prints the release, tag and the git commit the package was built from.
+
+### `geadm update`
+
+```console
+$ geadm update
+Update available: 0.2.2 → 0.3.0
+$ pipx upgrade geadm
+```
+
+Checks PyPI for a newer release and upgrades in place, detecting whether you
+installed via pipx, uv or pip. Use `--check` to only report.
 
 ### Global options
 

@@ -120,6 +120,112 @@ def version(
         print(f"geadm {data['version']} ({data['tag']}, commit {data['commit']})")
 
 
+def _installed_version() -> str:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as pkg_version
+
+    try:
+        return pkg_version("geadm")
+    except PackageNotFoundError:
+        from geadm import __version__
+
+        return __version__
+
+
+def _latest_version(timeout: float = 5.0) -> str | None:
+    """Latest geadm version on PyPI, or None if the check fails (offline etc.)."""
+    import json
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(
+            "https://pypi.org/pypi/geadm/json", timeout=timeout
+        ) as resp:
+            return json.load(resp)["info"]["version"]
+    except Exception:
+        return None
+
+
+def _install_method() -> tuple[str, list[str] | None]:
+    """Detect how geadm was installed and the command to upgrade it.
+
+    Returns (label, argv-or-None). None means we can't upgrade automatically.
+    """
+    import sys
+
+    prefix = sys.prefix.replace("\\", "/")
+    if "/pipx/venvs/" in prefix:
+        return "pipx", ["pipx", "upgrade", "geadm"]
+    if "/uv/tools/" in prefix or "/uv/tools" in prefix:
+        return "uv tool", ["uv", "tool", "upgrade", "geadm"]
+    return "pip", [sys.executable, "-m", "pip", "install", "--upgrade", "geadm"]
+
+
+def _version_tuple(v: str) -> tuple:
+    parts = []
+    for chunk in v.split("."):
+        num = "".join(c for c in chunk if c.isdigit())
+        parts.append(int(num) if num else 0)
+    return tuple(parts)
+
+
+@app.command()
+def update(
+    check: bool = typer.Option(
+        False, "--check", help="Only report whether an update is available."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Update geadm to the latest release."""
+    import subprocess
+
+    from geadm.render import console, emit_json, err_console
+
+    current = _installed_version()
+    latest = _latest_version()
+    method, argv = _install_method()
+    outdated = latest is not None and _version_tuple(latest) > _version_tuple(current)
+
+    if as_json:
+        emit_json(
+            {
+                "current": current,
+                "latest": latest,
+                "outdated": outdated,
+                "install_method": method,
+            }
+        )
+        return
+
+    if latest is None:
+        err_console.print("[yellow]Could not reach PyPI to check for updates.[/yellow]")
+        raise typer.Exit(code=1)
+    if not outdated:
+        console.print(f"geadm is up to date ([bold]{current}[/bold]).")
+        return
+
+    console.print(f"Update available: [bold]{current}[/bold] → [bold green]{latest}[/bold green]")
+    if check:
+        console.print(f"Run [bold]geadm update[/bold] (or `{' '.join(argv)}`).")
+        return
+    if argv is None:
+        console.print("Upgrade geadm with your package manager.")
+        return
+
+    console.print(f"[dim]$ {' '.join(argv)}[/dim]")
+    try:
+        subprocess.run(argv, check=True)
+    except FileNotFoundError:
+        err_console.print(
+            f"[yellow]{argv[0]} not found on PATH.[/yellow] Upgrade manually: "
+            f"{' '.join(argv)}"
+        )
+        raise typer.Exit(code=1) from None
+    except subprocess.CalledProcessError as exc:
+        err_console.print(f"[red]Upgrade failed[/red] (exit {exc.returncode}).")
+        raise typer.Exit(code=exc.returncode) from None
+
+
 def run() -> None:
     """Console entrypoint: run the app with concise permission-error reporting."""
     import warnings
