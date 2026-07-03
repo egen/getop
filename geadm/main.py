@@ -175,6 +175,25 @@ def _version_tuple(v: str) -> tuple:
     return tuple(parts)
 
 
+# Success markers printed by the upgrade tools (pipx / pip / uv). Their
+# no-op output ("already at latest", "already satisfied") lacks these.
+_UPGRADE_OK_MARKERS = ("upgraded package", "successfully installed", "updated ")
+
+
+def _upgrade_succeeded(output: str, installed_after: str, latest: str) -> bool:
+    """Whether an upgrade actually landed the new release.
+
+    Two independent signals, because right after a release the running
+    process may still read the old version off disk *and* the installer may
+    no-op against a not-yet-propagated index: the version reached latest, or
+    the tool printed a success marker.
+    """
+    if _version_tuple(installed_after) >= _version_tuple(latest):
+        return True
+    low = output.lower()
+    return any(marker in low for marker in _UPGRADE_OK_MARKERS)
+
+
 @app.command()
 def update(
     check: bool = typer.Option(
@@ -220,16 +239,33 @@ def update(
 
     console.print(f"[dim]$ {' '.join(argv)}[/dim]")
     try:
-        subprocess.run(argv, check=True)
+        result = subprocess.run(argv, capture_output=True, text=True)
     except FileNotFoundError:
         err_console.print(
             f"[yellow]{argv[0]} not found on PATH.[/yellow] Upgrade manually: "
             f"{' '.join(argv)}"
         )
         raise typer.Exit(code=1) from None
-    except subprocess.CalledProcessError as exc:
-        err_console.print(f"[red]Upgrade failed[/red] (exit {exc.returncode}).")
-        raise typer.Exit(code=exc.returncode) from None
+
+    output = f"{result.stdout}\n{result.stderr}".strip()
+    if result.returncode != 0:
+        if output:
+            err_console.print(f"[dim]{output}[/dim]")
+        err_console.print(f"[red]Upgrade failed[/red] (exit {result.returncode}).")
+        raise typer.Exit(code=result.returncode)
+
+    if _upgrade_succeeded(output, _installed_version(), latest):
+        console.print(f"[green]Upgraded to {latest}.[/green]")
+        return
+    # Detected an update but the installer couldn't get it: PyPI's install
+    # index lags its metadata API by a minute or two after a release, and no
+    # client flag closes that gap — it just needs a moment.
+    console.print(
+        f"[yellow]{latest} isn't installable yet[/yellow] — PyPI is still "
+        "propagating the release. Run [bold]geadm update[/bold] again shortly."
+    )
+    if output:
+        console.print(f"[dim]{output}[/dim]")
 
 
 def run() -> None:

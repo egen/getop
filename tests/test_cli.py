@@ -120,6 +120,31 @@ def test_version_tuple_compares():
     assert _version_tuple("0.10.0") > _version_tuple("0.9.0")
 
 
+def test_upgrade_succeeded_by_version_reached():
+    from geadm.main import _upgrade_succeeded
+
+    # installed reached latest, even if output is empty/stale
+    assert _upgrade_succeeded("", "0.5.0", "0.5.0") is True
+
+
+def test_upgrade_succeeded_by_marker_when_version_read_stale():
+    from geadm.main import _upgrade_succeeded
+
+    # running process still reads old version, but pipx confirmed the upgrade
+    assert _upgrade_succeeded(
+        "upgraded package geadm from 0.4.0 to 0.5.0", "0.4.0", "0.5.0"
+    ) is True
+
+
+def test_upgrade_noop_is_not_success():
+    from geadm.main import _upgrade_succeeded
+
+    # the reported propagation-lag case: pipx no-op'd, version didn't move
+    assert _upgrade_succeeded(
+        "geadm is already at latest version 0.4.0", "0.4.0", "0.5.0"
+    ) is False
+
+
 def test_logs_user_help_mentions_prompt_logging(app_runner):
     out = app_runner.invoke(app, ["logs", "user", "--help"]).output
     assert "prompt/response" in out
