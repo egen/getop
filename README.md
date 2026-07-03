@@ -62,12 +62,13 @@ for machine-readable output, and time-windowed commands take `--since`
 ### Inventory — `geadm ls`
 
 ```sh
-geadm ls engines|datastores|connectors|agents
+geadm ls engines|datastores|connectors|agents|licenses
 ```
 
 Walks the collection hierarchy: engines and data stores under
 `default_collection`, data connectors across *all* collections (each
-connector-backed source lives in its own), and agents per engine.
+connector-backed source lives in its own), agents per engine, and user
+licenses in the project's `default_user_store`.
 
 ### Logs — `geadm logs`
 

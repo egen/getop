@@ -16,15 +16,26 @@ def http_error(status: int) -> requests.HTTPError:
 
 
 class FakeDiscoveryClient:
-    def __init__(self, engines: list | None = None, data_stores: list | None = None):
+    def __init__(
+        self,
+        engines: list | None = None,
+        data_stores: list | None = None,
+        user_licenses: list | Exception | None = None,
+    ):
         self._engines = engines or []
         self._data_stores = data_stores or []
+        self._user_licenses = user_licenses if user_licenses is not None else []
 
     def list_engines(self, parent: str):
         return list(self._engines)
 
     def list_data_stores(self, parent: str):
         return list(self._data_stores)
+
+    def list_user_licenses(self, parent: str):
+        if isinstance(self._user_licenses, Exception):
+            raise self._user_licenses
+        return list(self._user_licenses)
 
 
 class FakeClients:
@@ -36,10 +47,11 @@ class FakeClients:
         data_stores: list | None = None,
         rest_responses: dict[str, Any] | None = None,
         log_entries: list | None = None,
+        user_licenses: list | Exception | None = None,
     ):
         self.project = "test-project"
         self.location = "global"
-        self._discovery = FakeDiscoveryClient(engines, data_stores)
+        self._discovery = FakeDiscoveryClient(engines, data_stores, user_licenses)
         # path -> dict response, int -> raise HTTPError(status)
         self._rest = rest_responses or {}
         self.rest_calls: list[str] = []
@@ -79,6 +91,25 @@ def engine(engine_id: str, display_name: str = "An Engine") -> SimpleNamespace:
         industry_vertical=SimpleNamespace(name="GENERIC"),
         data_store_ids=["ds-1"],
         create_time=None,
+    )
+
+
+def user_license(
+    user_principal: str = "user@example.com",
+    state_name: str = "ASSIGNED",
+    config_id: str = "gemini-business",
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        user_principal=user_principal,
+        user_profile=None,
+        license_assignment_state=SimpleNamespace(name=state_name),
+        license_config=(
+            "projects/p/locations/global/userStores/default_user_store"
+            f"/licenseConfigs/{config_id}"
+        ),
+        create_time=None,
+        update_time=None,
+        last_login_time=None,
     )
 
 

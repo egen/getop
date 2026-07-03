@@ -1,14 +1,15 @@
 """geadm ls — list Gemini Enterprise resources (read-only).
 
-Every command in this module walks the `default_collection` hierarchy of a
-Discovery Engine project and prints what it finds. Nothing here ever calls a
-mutating RPC (create/update/delete/import/purge) — only list_*, get_* and
-Clients.rest_get (HTTP GET) are used. The only IAM permission required is
-`roles/discoveryengine.viewer`.
+Every command in this module walks the `default_collection` (or
+`default_user_store`) hierarchy of a Discovery Engine project and prints what
+it finds. Nothing here ever calls a mutating RPC (create/update/delete/import/
+purge) — only list_*, get_* and Clients.rest_get (HTTP GET) are used. The only
+IAM permission required is `roles/discoveryengine.viewer`.
 
 Data collection is split from rendering so `geadm doctor` (and tests) can
 call `collect_engines` / `collect_datastores` / `collect_connector` /
-`collect_agents` directly and get plain JSON-safe dicts back.
+`collect_agents` / `collect_licenses` directly and get plain JSON-safe dicts
+back.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Any
 
 import requests
 import typer
+from google.api_core import exceptions as gexceptions
 from google.cloud import discoveryengine_v1
 
 from geadm.auth import Clients, get_clients
@@ -253,6 +255,40 @@ def collect_agents(clients: Clients) -> list[dict]:
     return results
 
 
+# ---- user licenses (default_user_store) ---------------------------------------
+
+
+def _license_to_dict(license_: Any) -> dict:
+    return {
+        "user_principal": getattr(license_, "user_principal", None),
+        "user_profile": getattr(license_, "user_profile", None),
+        "license_assignment_state": _enum_name(
+            getattr(license_, "license_assignment_state", None)
+        ),
+        "license_config": getattr(license_, "license_config", None),
+        "license_config_id": _short_id(getattr(license_, "license_config", None)),
+        "create_time": _iso(getattr(license_, "create_time", None)),
+        "update_time": _iso(getattr(license_, "update_time", None)),
+        "last_login_time": _iso(getattr(license_, "last_login_time", None)),
+    }
+
+
+def collect_licenses(clients: Clients) -> list[dict]:
+    """List every user license in the project's default user store.
+
+    Reads projects/{project}/locations/{location}/userStores/default_user_store
+    via UserLicenseServiceClient.list_user_licenses (read-only, pageable).
+    """
+    client = clients.discoveryengine(discoveryengine_v1.UserLicenseServiceClient)
+    parent = (
+        f"projects/{clients.project}/locations/{clients.location}"
+        "/userStores/default_user_store"
+    )
+    return [
+        _license_to_dict(license_) for license_ in client.list_user_licenses(parent=parent)
+    ]
+
+
 # ---- CLI commands --------------------------------------------------------------
 
 
@@ -401,6 +437,52 @@ def agents(
     rendered = table(
         "Agents",
         ["Engine", "Agent ID", "Display Name", "State", "Note"],
+        rows,
+    )
+    output(data, rendered, as_json)
+
+
+@app.command()
+def licenses(
+    ctx: typer.Context,
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """List Gemini Enterprise user licenses in the default user store.
+
+    Read-only (UserLicenseServiceClient.list_user_licenses). Requires only
+    roles/discoveryengine.viewer.
+    """
+    from geadm.render import err_console
+
+    state = ctx.obj
+    clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
+    try:
+        data = collect_licenses(clients)
+    except gexceptions.NotFound:
+        rendered = table("User Licenses", ["Status"], [("no user store found",)])
+        output([], rendered, as_json)
+        return
+    except gexceptions.PermissionDenied as exc:
+        err_console.print(
+            "[bold red]Permission denied[/bold red] listing user licenses for "
+            f"{clients.project} ({clients.location}). Requires "
+            "roles/discoveryengine.viewer.\n"
+            f"[dim]{exc}[/dim]"
+        )
+        raise typer.Exit(code=1) from None
+    rows = [
+        (
+            lic["user_principal"],
+            lic["license_assignment_state"],
+            lic["license_config_id"],
+            lic["last_login_time"],
+            lic["create_time"],
+        )
+        for lic in data
+    ]
+    rendered = table(
+        "User Licenses",
+        ["User", "State", "License Config", "Last Login", "Created"],
         rows,
     )
     output(data, rendered, as_json)

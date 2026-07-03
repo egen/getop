@@ -1,6 +1,6 @@
 """Collector behaviour for geadm ls against fake clients."""
 
-from conftest import FakeClients, engine
+from conftest import FakeClients, engine, user_license
 
 from geadm.commands import ls
 
@@ -86,3 +86,57 @@ def test_collect_agents_flattens_agent_fields():
     assert rows[0]["id"] == "agent-1"
     assert rows[0]["display_name"] == "Deep Research"
     assert rows[0]["state"] == "ENABLED"
+
+
+def test_collect_licenses_shapes_dicts():
+    clients = FakeClients(
+        user_licenses=[user_license("alice@example.com", "ASSIGNED", "gemini-business")]
+    )
+    rows = ls.collect_licenses(clients)
+    assert rows == [
+        {
+            "user_principal": "alice@example.com",
+            "user_profile": None,
+            "license_assignment_state": "ASSIGNED",
+            "license_config": (
+                "projects/p/locations/global/userStores/default_user_store"
+                "/licenseConfigs/gemini-business"
+            ),
+            "license_config_id": "gemini-business",
+            "create_time": None,
+            "update_time": None,
+            "last_login_time": None,
+        }
+    ]
+
+
+def test_collect_licenses_empty():
+    clients = FakeClients(user_licenses=[])
+    assert ls.collect_licenses(clients) == []
+
+
+def test_licenses_command_reports_no_user_store_on_not_found(app_runner):
+    from google.api_core import exceptions as gexceptions
+
+    from geadm.main import app
+
+    def fake_get_clients(project, location, quota_project=None):
+        clients = FakeClients()
+
+        def raise_not_found(*args, **kwargs):
+            raise gexceptions.NotFound("no user store")
+
+        clients._discovery.list_user_licenses = raise_not_found
+        return clients
+
+    import geadm.commands.ls as ls_module
+
+    original = ls_module.get_clients
+    ls_module.get_clients = fake_get_clients
+    try:
+        result = app_runner.invoke(app, ["ls", "licenses"])
+    finally:
+        ls_module.get_clients = original
+
+    assert result.exit_code == 0
+    assert "no user store found" in result.stdout
