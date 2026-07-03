@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/egen/geadm/compare/v0.4.0...v0.5.0) (2026-07-03)
+
+
+### Features
+
+* **cli:** armor --policy prints the Model Armor template ([#32](https://github.com/egen/geadm/issues/32)) ([430023f](https://github.com/egen/geadm/commit/430023f7a929254c90238c612cc8e3fa143f1f72))
+
 ## [0.4.0](https://github.com/egen/geadm/compare/v0.3.2...v0.4.0) (2026-07-03)
 
 
