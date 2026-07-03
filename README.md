@@ -48,6 +48,7 @@ geadm ls engines|datastores|connectors|agents   # inventory the default_collecti
 geadm logs connector [--datastore ID] [--severity ERROR] [--since 1h]
 geadm logs user <email> [--since 24h]           # ⚠ may surface end-user prompt/response content
 geadm stats [--engine ID] [--since 24h]         # query volume, latency, connector sync freshness
+geadm quota [--since 24h]                       # quota usage vs limits with % used
 geadm doctor                                    # composite read-only health check
 ```
 

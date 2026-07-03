@@ -244,6 +244,42 @@ def collect_stats(
     return result
 
 
+_INT64_MAX = 9.2e18  # limits at int64-max mean "effectively unlimited"
+
+
+def _fmt_number(value: Any) -> str:
+    """Human-readable number: thousands separators, no scientific notation."""
+    if value is None:
+        return "-"
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if v >= _INT64_MAX:
+        return "unlimited"
+    if v == int(v):
+        return f"{int(v):,}"
+    if abs(v) >= 100:
+        return f"{v:,.0f}"
+    if abs(v) >= 1:
+        return f"{v:,.2f}"
+    return f"{v:.4f}"
+
+
+def _fmt_bytes(value: Any) -> str:
+    """Binary-unit rendering for byte-denominated quotas."""
+    if value is None:
+        return "-"
+    v = float(value)
+    if v >= _INT64_MAX:
+        return "unlimited"
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB", "PiB"):
+        if abs(v) < 1024 or unit == "PiB":
+            return f"{v:,.1f} {unit}" if unit != "B" else f"{int(v):,} B"
+        v /= 1024
+    return _fmt_number(value)
+
+
 def _render(data: dict) -> Any:
     if not data["metrics_discovered"]:
         return Text(
@@ -257,7 +293,11 @@ def _render(data: dict) -> Any:
     for bucket in (data["query_volume"], data["latency"], data["connector"]["metrics"]):
         for m in bucket.values():
             latest = m["latest_point_time"] or "-"
-            agg = "-" if m["aggregate"] is None else f"{m['aggregate']:.3g} ({m['aggregate_label']})"
+            agg = (
+                "-"
+                if m["aggregate"] is None
+                else f"{_fmt_number(m['aggregate'])} ({m['aggregate_label']})"
+            )
             rows.append((m["type"], m["category"], m["points"], agg, latest))
 
     t = table(
@@ -281,6 +321,165 @@ def _render(data: dict) -> Any:
     if note:
         pieces.append(Text(note, style="yellow"))
     return Group(*pieces)
+
+
+_QUOTA_FILTER = 'metric.type = starts_with("discoveryengine.googleapis.com/quota/")'
+
+
+def collect_quota(clients: Any, since: str = "24h") -> list[dict]:
+    """Discovery Engine quota rows: usage vs limit (+ % used) per quota and
+    location, and exceeded-event counts over the --since window.
+
+    Quota metrics follow quota/<name>/{usage,limit,exceeded} on the
+    discoveryengine.googleapis.com/Location resource. Read-only.
+    """
+    start_time = since_timestamp(since)
+    end_time = datetime.now(timezone.utc)
+    interval = monitoring_v3.TimeInterval(start_time=start_time, end_time=end_time)
+    client = clients.monitoring
+    project_path = clients.monitoring_project_path
+
+    descriptors = list(
+        client.list_metric_descriptors(
+            request=monitoring_v3.ListMetricDescriptorsRequest(
+                name=project_path, filter=_QUOTA_FILTER
+            )
+        )
+    )
+
+    def fetch(descriptor: Any) -> tuple[str, list[Any]]:
+        series = list(
+            client.list_time_series(
+                request=monitoring_v3.ListTimeSeriesRequest(
+                    name=project_path,
+                    filter=f'metric.type = "{descriptor.type}"',
+                    interval=interval,
+                    view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+                )
+            )
+        )
+        return descriptor.type, series
+
+    rows: dict[tuple[str, str], dict] = {}
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        for metric_type, series_list in pool.map(fetch, descriptors):
+            # quota/<name>/<kind>
+            parts = metric_type.split("/quota/", 1)[-1].rsplit("/", 1)
+            if len(parts) != 2:
+                continue
+            quota_name, kind = parts
+            for series in series_list:
+                if not series.points:
+                    continue
+                location = dict(series.resource.labels).get("location", "global")
+                row = rows.setdefault(
+                    (quota_name, location),
+                    {
+                        "quota": quota_name,
+                        "location": location,
+                        "limit_name": dict(series.metric.labels).get("limit_name"),
+                        "usage": None,
+                        "limit": None,
+                        "exceeded": 0,
+                        "percent_used": None,
+                    },
+                )
+                latest = max(series.points, key=lambda p: p.interval.end_time)
+                value = _point_value(latest)
+                if kind == "usage":
+                    row["usage"] = value
+                elif kind == "limit":
+                    row["limit"] = value
+                elif kind == "exceeded":
+                    values = [_point_value(p) or 0 for p in series.points]
+                    row["exceeded"] += int(sum(values))
+
+    for row in rows.values():
+        usage, limit = row["usage"], row["limit"]
+        if usage is not None and limit and 0 < limit < _INT64_MAX:
+            row["percent_used"] = round(100.0 * usage / limit, 2)
+
+    return sorted(
+        rows.values(),
+        key=lambda r: (-(r["percent_used"] or -1), r["quota"], r["location"]),
+    )
+
+
+def _pct_text(pct: Any) -> Any:
+    if pct is None:
+        return Text("-", style="dim")
+    style = "bold red" if pct >= 90 else "bold yellow" if pct >= 75 else "green"
+    return Text(f"{pct:.1f}%", style=style)
+
+
+def _render_quota(rows: list[dict], since: str) -> Any:
+    if not rows:
+        return Text(
+            "No discoveryengine.googleapis.com quota metrics with data were "
+            "found for this project/window.",
+            style="yellow",
+        )
+    fmt_rows = []
+    for r in rows:
+        size_quota = "size" in r["quota"]
+        fmt = _fmt_bytes if size_quota else _fmt_number
+        fmt_rows.append(
+            (
+                r["quota"],
+                r["location"],
+                fmt(r["usage"]),
+                fmt(r["limit"]),
+                _pct_text(r["percent_used"]),
+                r["exceeded"] or "",
+            )
+        )
+    return table(
+        f"Discovery Engine quotas (exceeded counts over {since})",
+        ["Quota", "Location", "Usage", "Limit", "Used", f"Exceeded ({since})"],
+        fmt_rows,
+    )
+
+
+def quota_command(
+    ctx: typer.Context,
+    since: str = typer.Option(
+        "24h",
+        "--since",
+        help="Window for exceeded-event counts (usage/limit always show the "
+        "latest data point).",
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Discovery Engine quota usage vs limits, with percent used.
+
+    Discovers quota/*/usage|limit|exceeded metrics at runtime and shows the
+    latest usage against the limit per quota and location, highlighting
+    anything ≥75% (yellow) or ≥90% (red). Read-only: needs only
+    roles/monitoring.viewer.
+    """
+    from geadm.auth import get_clients
+
+    state = ctx.obj
+    clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
+
+    try:
+        if err_console.is_terminal:
+            with err_console.status("Querying quota metrics…", spinner="dots"):
+                rows = collect_quota(clients, since=since)
+        else:
+            rows = collect_quota(clients, since=since)
+    except ValueError as exc:
+        err_console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+    except gexceptions.PermissionDenied as exc:
+        err_console.print(
+            "[red]Permission denied querying Cloud Monitoring.[/red] "
+            "Grant the caller roles/monitoring.viewer on the project and retry.\n"
+            f"[dim]{exc}[/dim]"
+        )
+        raise typer.Exit(code=1)
+
+    output(rows, _render_quota(rows, since), as_json)
 
 
 def stats_command(

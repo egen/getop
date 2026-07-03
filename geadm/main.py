@@ -66,6 +66,7 @@ from geadm.commands import stats as stats_cmd  # noqa: E402
 app.add_typer(ls_cmd.app, name="ls")
 app.add_typer(logs_cmd.app, name="logs")
 app.command(name="stats")(stats_cmd.stats_command)
+app.command(name="quota")(stats_cmd.quota_command)
 app.command(name="doctor")(doctor_cmd.doctor_command)
 
 
