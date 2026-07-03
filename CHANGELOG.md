@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/egen/geadm/compare/v0.3.1...v0.3.2) (2026-07-03)
+
+
+### Bug Fixes
+
+* **cli:** force fresh index in update to beat PyPI cache lag ([#28](https://github.com/egen/geadm/issues/28)) ([423b686](https://github.com/egen/geadm/commit/423b68610816b404521f900f4b44b0b6c2cf8b04))
+
 ## [0.3.1](https://github.com/egen/geadm/compare/v0.3.0...v0.3.1) (2026-07-03)
 
 
