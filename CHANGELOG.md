@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/egen/geadm/compare/v0.2.0...v0.2.1) (2026-07-03)
+
+
+### Documentation
+
+* **readme:** add example output for every command ([#21](https://github.com/egen/geadm/issues/21)) ([e8fc35a](https://github.com/egen/geadm/commit/e8fc35a232c05c4ff10b307a09c254cecc7dea69))
+* **readme:** pipx-first install, globals table, auth after commands ([#18](https://github.com/egen/geadm/issues/18)) ([b60c8bc](https://github.com/egen/geadm/commit/b60c8bc23fe5c4fe00501d4d808a40f6491c1d62))
+
 ## [0.2.0](https://github.com/egen/geadm/compare/v0.1.1...v0.2.0) (2026-07-03)
 
 
