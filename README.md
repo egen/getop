@@ -16,29 +16,32 @@ $ geadm info
                      Gemini Enterprise — acme-search-prod (global)
 
 ╭─────── Engines ───────╮ ╭───── Data stores ─────╮ ╭────── Connectors ──────╮
-│           1           │ │           6           │ │      2/2 ACTIVE        │
+│           2           │ │           9           │ │      3/3 ACTIVE        │
 ╰───────────────────────╯ ╰───────────────────────╯ ╰────────────────────────╯
 ╭─────── Agents ────────╮ ╭─────── Licenses ──────╮
-│          37           │ │    27/500 (5.4%)      │
+│          41           │ │    27/500 (5.4%)      │
 ╰───────────────────────╯ │    21/27 logged in    │
                           │  12 awaiting license  │
                           ╰───────────────────────╯
 
-╭────────────────────── Support Search ───────────────────────╮
-│ SEARCH · GENERIC · intranet · created 2026-04-08            │
-│ Data stores (6)                                             │
-│   • acme-sharepoint_1774543_file ← sharepoint               │
-│   • acme-sharepoint_1774543_page ← sharepoint               │
-│   • acme-onedrive_1775136_file ← onedrive                   │
-│ Agents (37 — 3 enabled, 34 user defaults)                   │
-│   • Deep Research ENABLED                                   │
-│   • Contract Analyst PRIVATE                                │
-│   • My Agent ×34 (user defaults, private)                   │
-│ Features (16 on · 5 off)                                    │
-│ ✓ agent-gallery model-selector notebook-lm prompt-gallery   │
-│ ✗ agent-sharing-without-admin-approval canvas               │
-╰─────────────────── support-search_1775663018 ───────────────╯
+╭─────────────── Support Search ───────────────╮ ╭─────────────── Sandbox ──────────────╮
+│ SEARCH · GENERIC · intranet · 2026-04-08     │ │ SEARCH · GENERIC · intranet · 2026-03-26│
+│ Data stores (6)                              │ │ Data stores (3)                        │
+│   • acme-sharepoint_1774543_file ← sharepoint│ │   • acme-sharepoint_1774543_file ← shar…│
+│   • acme-sharepoint_1774543_page ← sharepoint│ │   • acme-onedrive_1775136_file ← onedrive│
+│   • acme-onedrive_1775136_file ← onedrive    │ │   • acme-gdrive_1778773_file ← google_dr…│
+│ Agents (37 — 3 enabled, 34 user defaults)    │ │ Agents (4 — 4 enabled, 0 user defaults)│
+│   • Deep Research ENABLED                    │ │   • Security Reviewer ENABLED          │
+│   • Contract Analyst PRIVATE                 │ │   • Deep Research ENABLED              │
+│   • My Agent ×34 (user defaults, private)    │ │   • Idea Generation ENABLED            │
+│ Features (16 on · 5 off)                     │ │ Features (14 on · 7 off)               │
+│ ✓ agent-gallery model-selector notebook-lm   │ │ ✓ agent-gallery model-selector         │
+│ ✗ agent-sharing-without-admin-approval canvas│ │ ✗ session-sharing onedrive-upload      │
+╰────────── support-search_1775663018 ─────────╯ ╰──────── sandbox_1774543712 ──────────╯
 ```
+
+Two engines side by side — spot the config drift at a glance: sandbox has
+`session-sharing` and `onedrive-upload` disabled where prod allows them.
 
 By design, the current release is strictly read-only — every command works with
 viewer roles alone, so it can be handed to anyone on the team without
@@ -54,18 +57,8 @@ project subagents, skills and hard constraints.
 pipx install geadm
 ```
 
-Or with your tool of choice: `uv tool install geadm`, or plain `pip install geadm`.
-Then authenticate once with Application Default Credentials:
-
-```sh
-gcloud auth application-default login
-```
-
-From a checkout, for development:
-
-```sh
-uv sync && uv run geadm --help
-```
+Also works with `uv tool install geadm` or `pip install geadm`. See
+[Authentication](#authentication) for the one-time credential setup.
 
 ## Commands
 
@@ -243,10 +236,15 @@ geadm quota --json | jq '.[] | select(.percent_used > 75)'
 geadm ls licenses --json | jq '[.[] | select(.last_login_time == null)] | length'
 ```
 
-## Authentication & roles
+## Authentication
 
-geadm uses Application Default Credentials (`gcloud auth application-default login`);
-it never reads or writes key files.
+Authenticate once with Application Default Credentials:
+
+```sh
+gcloud auth application-default login
+```
+
+geadm never reads or writes key files. Each command needs only a viewer role:
 
 | Role | Used by |
 |---|---|
