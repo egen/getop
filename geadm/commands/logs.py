@@ -28,7 +28,11 @@ from geadm import render
 from geadm.duration import since_rfc3339
 
 app = typer.Typer(
-    help="Inspect Gemini Enterprise Cloud Logging output (read-only).",
+    help=(
+        "Inspect Gemini Enterprise Cloud Logging output (read-only, "
+        "roles/logging.viewer). Enabling connector/observability logging on a "
+        "project requires roles/discoveryengine.agentspaceAdmin (one-time setup)."
+    ),
     no_args_is_help=True,
 )
 

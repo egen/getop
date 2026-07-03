@@ -33,6 +33,11 @@ Note: *enabling* connector/observability logging on a project requires
 `roles/discoveryengine.agentspaceAdmin` — that is a one-time project setup step,
 not something `geadm` does or needs.
 
+When authenticating as a user (not a service account), the Discovery Engine API
+requires a quota project. `geadm` sets the target project as the quota project
+automatically, which additionally requires `roles/serviceusage.serviceUsageConsumer`
+(or any role containing `serviceusage.services.use`) on that project.
+
 ## Commands
 
 ```sh
