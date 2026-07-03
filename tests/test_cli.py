@@ -103,6 +103,16 @@ def test_update_json(app_runner, monkeypatch):
     assert data["outdated"] is True
 
 
+def test_install_method_forces_fresh_index():
+    """update must bypass the client index cache, or it no-ops right after a
+    release when the cached index still lists the old version."""
+    from geadm.main import _install_method
+
+    _, argv = _install_method()
+    joined = " ".join(argv)
+    assert "no-cache" in joined
+
+
 def test_version_tuple_compares():
     from geadm.main import _version_tuple
 

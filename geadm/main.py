@@ -154,11 +154,15 @@ def _install_method() -> tuple[str, list[str] | None]:
     import sys
 
     prefix = sys.prefix.replace("\\", "/")
+    # --no-cache forces a fresh index fetch: right after a release the PyPI
+    # index a cached client sees can lag, and update would silently no-op.
     if "/pipx/venvs/" in prefix:
-        return "pipx", ["pipx", "upgrade", "geadm"]
+        return "pipx", ["pipx", "upgrade", "geadm", "--pip-args=--no-cache-dir"]
     if "/uv/tools/" in prefix or "/uv/tools" in prefix:
-        return "uv tool", ["uv", "tool", "upgrade", "geadm"]
-    return "pip", [sys.executable, "-m", "pip", "install", "--upgrade", "geadm"]
+        return "uv tool", ["uv", "tool", "upgrade", "--no-cache", "geadm"]
+    return "pip", [
+        sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", "geadm"
+    ]
 
 
 def _version_tuple(v: str) -> tuple:
