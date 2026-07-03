@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/egen/geadm/compare/v0.5.0...v0.5.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **cli:** clear update message on PyPI propagation lag ([#35](https://github.com/egen/geadm/issues/35)) ([d981393](https://github.com/egen/geadm/commit/d9813938dc860eb7529a27dcfaa84c7cf65953ba))
+
+
+### Documentation
+
+* **readme:** add roles/modelarmor.viewer ([#33](https://github.com/egen/geadm/issues/33)) ([a6a5372](https://github.com/egen/geadm/commit/a6a53720d71831da519628b65a6ebba20098400c))
+
 ## [0.5.0](https://github.com/egen/geadm/compare/v0.4.0...v0.5.0) (2026-07-03)
 
 

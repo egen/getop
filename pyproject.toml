@@ -1,6 +1,6 @@
 [project]
 name = "geadm"
-version = "0.5.0"
+version = "0.5.1"
 description = "CLI for Google Gemini Enterprise"
 readme = "README.md"
 license = { text = "MIT" }
