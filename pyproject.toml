@@ -1,8 +1,31 @@
 [project]
 name = "geadm"
 version = "0.1.0"
-description = "Read-only troubleshooting, debug and stats CLI for Google Gemini Enterprise (Discovery Engine / Agentspace)"
+description = "CLI for Google Gemini Enterprise"
 readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Egen" }]
+maintainers = [{ name = "Andrew McKinney" }]
+keywords = [
+    "gemini-enterprise",
+    "agentspace",
+    "discovery-engine",
+    "google-cloud",
+    "cli",
+    "observability",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+]
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.12",
@@ -11,6 +34,12 @@ dependencies = [
     "google-cloud-logging>=3.10",
     "google-cloud-monitoring>=2.21",
 ]
+
+[project.urls]
+Homepage = "https://github.com/egen/geadm"
+Repository = "https://github.com/egen/geadm"
+Issues = "https://github.com/egen/geadm/issues"
+Changelog = "https://github.com/egen/geadm/blob/main/CHANGELOG.md"
 
 [project.scripts]
 geadm = "geadm.main:run"

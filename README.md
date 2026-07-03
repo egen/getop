@@ -25,7 +25,13 @@ the project subagents, skills and hard constraints.
 ## Install
 
 ```sh
-uv tool install .          # from a checkout
+uv tool install geadm      # or: pipx install geadm / pip install geadm
+```
+
+From a checkout:
+
+```sh
+uv tool install .
 # or for development:
 uv sync && uv run geadm --help
 ```

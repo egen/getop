@@ -1,0 +1,25 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Runs with the default Actions token: the egen org forbids classic
+          # PATs and fine-grained PATs are not enabled, so release PRs do not
+          # trigger the required `test` checks on their own. To release:
+          #   gh pr close <release-pr> && gh pr reopen <release-pr>
+          # (close/reopen re-delivers the pull_request event and CI runs).
+          # If a RELEASE_PLEASE_TOKEN secret is ever added, it takes over and
+          # the workaround becomes unnecessary.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          release-type: python
