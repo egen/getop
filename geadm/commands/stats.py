@@ -280,7 +280,7 @@ def _fmt_bytes(value: Any) -> str:
     return _fmt_number(value)
 
 
-def _render(data: dict) -> Any:
+def _render(data: dict, header: str) -> Any:
     if not data["metrics_discovered"]:
         return Text(
             "No discoveryengine.googleapis.com metrics were found for this project/"
@@ -301,7 +301,7 @@ def _render(data: dict) -> Any:
             rows.append((m["type"], m["category"], m["points"], agg, latest))
 
     t = table(
-        "Discovery Engine metrics",
+        f"Discovery Engine metrics — {header}",
         ["Metric type", "Category", "Points", "Aggregate", "Latest point (UTC)"],
         rows,
     )
@@ -412,7 +412,7 @@ def _pct_text(pct: Any) -> Any:
     return Text(f"{pct:.1f}%", style=style)
 
 
-def _render_quota(rows: list[dict], since: str) -> Any:
+def _render_quota(rows: list[dict], since: str, header: str) -> Any:
     if not rows:
         return Text(
             "No discoveryengine.googleapis.com quota metrics with data were "
@@ -434,7 +434,7 @@ def _render_quota(rows: list[dict], since: str) -> Any:
             )
         )
     return table(
-        f"Discovery Engine quotas (exceeded counts over {since})",
+        f"Discovery Engine quotas — {header}\n(exceeded counts over {since})",
         ["Quota", "Location", "Usage", "Limit", "Used", f"Exceeded ({since})"],
         fmt_rows,
     )
@@ -479,7 +479,11 @@ def quota_command(
         )
         raise typer.Exit(code=1)
 
-    output(rows, _render_quota(rows, since), as_json)
+    output(
+        rows,
+        _render_quota(rows, since, f"{clients.project} ({clients.location})"),
+        as_json,
+    )
 
 
 def stats_command(
@@ -535,4 +539,7 @@ def stats_command(
         )
         raise typer.Exit(code=1)
 
-    output(data, _render(data), as_json)
+    header = f"{clients.project} ({clients.location})"
+    if engine:
+        header += f", engine {engine}"
+    output(data, _render(data, header), as_json)
