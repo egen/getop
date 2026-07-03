@@ -53,3 +53,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["geadm"]
+
+[tool.hatch.build.targets.sdist]
+# Ship only what a distro packager needs; dev tooling stays in the repo.
+exclude = [".claude", ".github", ".gitignore", "AGENTS.md", "uv.lock"]
