@@ -225,11 +225,16 @@ def _gen_ai_content_text(content: Any) -> Optional[str]:
       - a dict {"role": "user"|"model", "parts": [...]}, where each part is
         one of:
           {"text": "..."}                    plain text (empty text skipped)
-          {"text": "...", "thought": true}    model reasoning -> "[thought] ..."
+          {"text": "...", "thought": true}    model reasoning -> "💭 ..."
           {"function_call": {"name": ..., "args": {...}, ...}, ...}
-                                               agent tool call -> "[tool] name(args)"
+                                               agent tool call -> "⚒ name(args)"
         Other part keys (file_data, inline_data, executable_code, ...) are
         ignored. Rendered parts are joined with a single space.
+
+    The 💭/⚒ prefixes are deliberately not square-bracket tags like
+    "[thought]"/"[tool]": message text is printed through Rich in the table
+    and --follow paths, which parses [.] as markup and strips it (verified
+    live -- the prefixes survived only in --json).
 
     Anything else falls back to str(content) rather than silently dropping
     data we haven't seen live yet.
@@ -248,7 +253,7 @@ def _gen_ai_content_text(content: Any) -> Optional[str]:
                 continue
             text = part.get("text")
             if text:
-                rendered.append(f"[thought] {text}" if part.get("thought") else str(text))
+                rendered.append(f"💭 {text}" if part.get("thought") else str(text))
                 continue
             function_call = part.get("function_call")
             if isinstance(function_call, Mapping):
@@ -263,7 +268,7 @@ def _gen_ai_content_text(content: Any) -> Optional[str]:
                 )
                 if len(args_str) > 80:
                     args_str = args_str[:79] + "…"
-                rendered.append(f"[tool] {name}({args_str})")
+                rendered.append(f"⚒ {name}({args_str})")
         return " ".join(rendered) if rendered else None
     return str(content)
 

@@ -186,7 +186,9 @@ def test_normalize_gen_ai_thought_part():
             labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
         )
     )
-    assert row["message"] == "[thought] Let me check the file first."
+    # Non-bracket prefix: Rich would parse "[thought]" as markup and strip it
+    # in table/--follow output.
+    assert row["message"] == "💭 Let me check the file first."
 
 
 def test_normalize_gen_ai_function_call_part():
@@ -209,7 +211,7 @@ def test_normalize_gen_ai_function_call_part():
             labels={"event.name": "gen_ai.choice", "gen_ai.system": "gemini"},
         )
     )
-    assert row["message"] == '[tool] onedrive_agent__get_file({"file_id":"abc123"})'
+    assert row["message"] == '⚒ onedrive_agent__get_file({"file_id":"abc123"})'
 
 
 def test_normalize_gen_ai_mixed_parts_joined_with_space():
@@ -230,7 +232,7 @@ def test_normalize_gen_ai_mixed_parts_joined_with_space():
         )
     )
     assert row["message"] == (
-        '[thought] Thinking... [tool] search({"q":"refunds"}) Here you go.'
+        '💭 Thinking... ⚒ search({"q":"refunds"}) Here you go.'
     )
 
 
