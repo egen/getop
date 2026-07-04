@@ -19,35 +19,35 @@ Read-only by design — every command runs with viewer roles alone.
 
 ```console
 $ getop info
-                     Gemini Enterprise — acme-search-prod (global)
+             Gemini Enterprise — acme-search-prod (global)
 
-╭─────── Engines ───────╮ ╭───── Data stores ─────╮ ╭────── Connectors ──────╮
-│           2           │ │           9           │ │      3/3 ACTIVE        │
-╰───────────────────────╯ ╰───────────────────────╯ ╰────────────────────────╯
-╭─────── Agents ────────╮ ╭─────── Licenses ──────╮
-│          41           │ │    27/500 (5.4%)      │
-╰───────────────────────╯ │    21/27 logged in    │
-                          │  12 awaiting license  │
-                          ╰───────────────────────╯
+╭──── Engines ─────╮  ╭── Data stores ───╮  ╭──── Connectors ────╮
+│        2         │  │        9         │  │     2/3 ACTIVE     │
+╰──────────────────╯  ╰──────────────────╯  ╰────────────────────╯
+╭───── Agents ─────╮  ╭───── Licenses ─────╮
+│        41        │  │   418/500 (84%)    │
+╰──────────────────╯  ╰────────────────────╯
 
-╭─────────────── Support Search ───────────────╮ ╭─────────────── Sandbox ──────────────╮
-│ SEARCH · GENERIC · intranet · 2026-04-08     │ │ SEARCH · GENERIC · intranet · 2026-03-26│
-│ Data stores (6)                              │ │ Data stores (3)                        │
-│   • acme-sharepoint_1774543_file ← sharepoint│ │   • acme-sharepoint_1774543_file ← shar…│
-│   • acme-sharepoint_1774543_page ← sharepoint│ │   • acme-onedrive_1775136_file ← onedrive│
-│   • acme-onedrive_1775136_file ← onedrive    │ │   • acme-gdrive_1778773_file ← google_dr…│
-│ Agents (37 — 3 enabled, 34 user defaults)    │ │ Agents (4 — 4 enabled, 0 user defaults)│
-│   • Deep Research ENABLED                    │ │   • Security Reviewer ENABLED          │
-│   • Contract Analyst PRIVATE                 │ │   • Deep Research ENABLED              │
-│   • My Agent ×34 (user defaults, private)    │ │   • Idea Generation ENABLED            │
-│ Features (16 on · 5 off)                     │ │ Features (14 on · 7 off)               │
-│ ✓ agent-gallery model-selector notebook-lm   │ │ ✓ agent-gallery model-selector         │
-│ ✗ agent-sharing-without-admin-approval canvas│ │ ✗ session-sharing onedrive-upload      │
-╰────────── support-search_1775663018 ─────────╯ ╰──────── sandbox_1774543712 ──────────╯
+╭────────────── Support Search ──────────────╮  ╭───────────────── Sandbox ──────────────────╮
+│ SEARCH · GENERIC · intranet · 2026-04-08   │  │ SEARCH · GENERIC · intranet · 2026-03-26   │
+│ Data stores (4)                            │  │ Data stores (3)                            │
+│   • sharepoint_1774_file  ← sharepoint     │  │   • sharepoint_1774_file  ← sharepoint     │
+│   • sharepoint_1774_page  ← sharepoint     │  │   • onedrive_1775_file    ← onedrive       │
+│   • onedrive_1775_file    ← onedrive       │  │   • gdrive_1778_file      ← google_drive   │
+│   • jira_1778_issue  ← jira  PAUSED        │  │ Agents (4 — 4 enabled, 0 defaults)         │
+│ Agents (41 — 4 enabled, 37 defaults)       │  │   • Security Reviewer   ENABLED            │
+│   • Deep Research      ENABLED             │  │   • Deep Research       ENABLED            │
+│   • Contract Analyst   ENABLED             │  │   • Idea Generation     ENABLED            │
+│   • My Agent ×37 (user defaults)           │  │ Features (14 on · 7 off)                   │
+│ Features (16 on · 5 off)                   │  │   ✓ agent-gallery model-selector           │
+│   ✓ agent-gallery model-selector           │  │   ✗ session-sharing onedrive-upload        │
+│   ✗ agent-sharing-without-approval         │  ╰──────────── sandbox_1774543712 ────────────╯
+╰──────── support-search_1775663018 ─────────╯
 ```
 
-Two engines side by side — spot the config drift at a glance: sandbox has
-`session-sharing` and `onedrive-upload` disabled where prod allows them.
+Two environments side by side. At a glance: prod's Jira connector is `PAUSED`
+(the 2/3 tile), licenses are at 84%, and sandbox has `session-sharing` and
+`onedrive-upload` disabled where prod allows them.
 
 By design, the current release is strictly read-only — every command works with
 viewer roles alone, so it can be handed to anyone on the team without
