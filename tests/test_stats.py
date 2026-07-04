@@ -161,6 +161,37 @@ def test_collect_quota_pairs_usage_and_limit():
     assert row["percent_used"] == 0.0
 
 
+def test_quota_console_url():
+    url = stats._quota_console_url("my-proj")
+    assert "project=my-proj" in url
+    assert "service=discoveryengine.googleapis.com" in url
+    assert url.startswith("https://console.cloud.google.com/iam-admin/quotas")
+
+
+def test_render_quota_links_names_but_json_stays_plain():
+    from rich.console import Console
+    from io import StringIO
+
+    rows = [
+        {
+            "quota": "documents_regional",
+            "location": "global",
+            "usage": 76,
+            "limit": 10_000_000,
+            "percent_used": 0.0,
+            "exceeded": 0,
+        }
+    ]
+    renderable = stats._render_quota(rows, "24h", "my-proj (global)", "my-proj")
+    console = Console(file=StringIO(), width=200, force_terminal=True)
+    console.print(renderable)
+    out = console.file.getvalue()
+    # the OSC 8 hyperlink escape carries the console URL
+    assert "iam-admin/quotas" in out
+    # raw row dict (what --json emits) never gained link markup
+    assert rows[0]["quota"] == "documents_regional"
+
+
 def test_collect_quota_unlimited_has_no_percent():
     clients = _clients(
         [
