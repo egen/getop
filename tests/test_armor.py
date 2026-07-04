@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from geadm.commands import armor
+from getop.commands import armor
 
 
 def test_armor_filter_default_matched_only():

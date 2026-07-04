@@ -1,18 +1,18 @@
-# geadm
+# getop
 
 [![Gemini Enterprise](https://img.shields.io/badge/Gemini%20Enterprise-Discovery%20Engine-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com/gemini/enterprise)
-[![PyPI](https://img.shields.io/pypi/v/geadm)](https://pypi.org/project/geadm/)
+[![PyPI](https://img.shields.io/pypi/v/getop)](https://pypi.org/project/getop/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-**geadm** is a command-line companion for operating **Google Gemini Enterprise**.
+**getop** is a command-line companion for operating **Google Gemini Enterprise**.
 It answers the questions that come up daily while running a deployment — What's
 deployed? Are the connectors syncing? What are users asking, and what is Model
 Armor flagging? How close are we to a quota ceiling? Is everything healthy? — in
 one screen each, straight from your terminal.
 
 ```console
-$ geadm info
+$ getop info
                      Gemini Enterprise — acme-search-prod (global)
 
 ╭─────── Engines ───────╮ ╭───── Data stores ─────╮ ╭────── Connectors ──────╮
@@ -54,15 +54,15 @@ project subagents, skills and hard constraints.
 ## Install
 
 ```sh
-pipx install geadm
+pipx install getop
 ```
 
-Also works with `uv tool install geadm` or `pip install geadm`. See
+Also works with `uv tool install getop` or `pip install getop`. See
 [Authentication](#authentication) for the one-time credential setup.
 
 ## Commands
 
-### `geadm info` — project overview
+### `getop info` — project overview
 
 A whole-project dashboard: summary tiles (engines, data stores, connector
 health, agents, and license seats / activation / unmet demand) plus a card per
@@ -71,10 +71,10 @@ Agent" user defaults collapsed into a single ×N line), and its feature toggles.
 Diffing two environments' cards is the fastest way to spot config drift. Output
 is shown at the top of this page.
 
-### `geadm ls` — inventory
+### `getop ls` — inventory
 
 ```sh
-geadm ls engines|datastores|connectors|agents|licenses
+getop ls engines|datastores|connectors|agents|licenses
 ```
 
 Lists resources across the collection hierarchy: engines and data stores under
@@ -82,7 +82,7 @@ Lists resources across the collection hierarchy: engines and data stores under
 connector-backed source lives in its own), agents per engine, and user licenses.
 
 ```console
-$ geadm ls connectors
+$ getop ls connectors
                                Data Connectors
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
 ┃ Collection           ┃ Data Source ┃ State  ┃ Refresh Interval ┃ Entities ┃
@@ -91,7 +91,7 @@ $ geadm ls connectors
 │ acme-onedrive_1775   │ onedrive    │ ACTIVE │ 86400s           │ 1        │
 └──────────────────────┴─────────────┴────────┴──────────────────┴──────────┘
 
-$ geadm ls licenses
+$ getop ls licenses
                                  User Licenses
 ┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
 ┃ User              ┃ State    ┃ Config      ┃ Last Login          ┃
@@ -101,12 +101,12 @@ $ geadm ls licenses
 └───────────────────┴──────────┴─────────────┴─────────────────────┘
 ```
 
-### `geadm logs` — view and tail logs
+### `getop logs` — view and tail logs
 
 ```sh
-geadm logs connector [--datastore ID] [--severity ERROR] [--since 1h]
-geadm logs user [email] [--since 24h] [--follow]
-geadm logs ai [--since 24h] [--follow]
+getop logs connector [--datastore ID] [--severity ERROR] [--since 1h]
+getop logs user [email] [--since 24h] [--follow]
+getop logs ai [--since 24h] [--follow]
 ```
 
 `connector` shows data-connector sync activity. `user` shows end-user activity —
@@ -114,11 +114,11 @@ prompts, assistant replies, searches, and Model Armor screening events — for o
 user, or all users when the email is omitted. `ai` streams the raw
 `gen_ai.user.message` / `gen_ai.choice` content logs (no identity field, so it
 can't be scoped per user — use `logs user` for that). `--follow`/`-f` tails
-either stream live. When a log is empty, geadm tells you whether logging simply
+either stream live. When a log is empty, getop tells you whether logging simply
 isn't enabled on the project or nothing matched your filter.
 
 ```console
-$ geadm logs user --since 24h
+$ getop logs user --since 24h
 ╭──────────────────────────────── SENSITIVE ─────────────────────────────────╮
 │ ⚠  Output may include end-user prompt/response content if prompt/response   │
 │ logging is enabled on this project.                                         │
@@ -135,24 +135,24 @@ $ geadm logs user --since 24h
 ```
 
 The `WARNING` row is Model Armor flagging a prompt-injection attempt. Tail it
-live with `geadm logs user -f`, or pull full transcripts with `--json`.
+live with `getop logs user -f`, or pull full transcripts with `--json`.
 
-### `geadm armor` — Model Armor violations
+### `getop armor` — Model Armor violations
 
 ```sh
-geadm armor [--since 24h] [--all]
+getop armor [--since 24h] [--all]
 ```
 
 Surfaces prompts and responses that Model Armor flagged, with the filters
 that tripped and their confidence (jailbreak, RAI categories, CSAM,
 malicious URIs). Violations only by default; `--all` includes clean
-screenings. Carries no user identity — pair with `geadm logs user`.
+screenings. Carries no user identity — pair with `getop logs user`.
 
 Add `--summary` for a per-filter rollup — hit counts, last seen, and an example
 input per category — instead of the event-by-event list:
 
 ```console
-$ geadm armor --summary --since 7d
+$ getop armor --summary --since 7d
               Model Armor hits by filter (7d)
 ┏━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Filter           ┃ Hits ┃ Last seen           ┃ Example input       ┃
@@ -166,7 +166,7 @@ Add `--policy` to print the configured Model Armor template(s) instead — the
 filters that are enabled and at what confidence:
 
 ```console
-$ geadm armor --policy
+$ getop armor --policy
             Model Armor policy — ge-default-amer (us)
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
 ┃ Filter                            ┃ Enforcement ┃ Confidence       ┃
@@ -178,7 +178,7 @@ $ geadm armor --policy
 ```
 
 ```console
-$ geadm armor --since 7d
+$ getop armor --since 7d
                           Model Armor violations (7d)
 ┏━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 ┃ Time     ┃ Direction ┃ Match       ┃ Filters                   ┃ Content        ┃
@@ -188,17 +188,17 @@ $ geadm armor --since 7d
 └──────────┴───────────┴─────────────┴───────────────────────────┴────────────────┘
 ```
 
-### `geadm stats` — metrics
+### `getop stats` — metrics
 
 ```sh
-geadm stats [--engine ID] [--since 24h]
+getop stats [--engine ID] [--since 24h]
 ```
 
 Discovers the project's `discoveryengine.googleapis.com` metrics at runtime and
 summarises query volume, latency and connector sync freshness over the window.
 
 ```console
-$ geadm stats --since 24h
+$ getop stats --since 24h
                  Discovery Engine metrics — acme-search-prod (global)
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Metric type                       ┃ Category  ┃ Points ┃ Aggregate           ┃
@@ -209,10 +209,10 @@ $ geadm stats --since 24h
 └───────────────────────────────────┴───────────┴────────┴─────────────────────┘
 ```
 
-### `geadm quota` — quota usage
+### `getop quota` — quota usage
 
 ```sh
-geadm quota [--since 24h]
+getop quota [--since 24h]
 ```
 
 Pairs each Discovery Engine quota's latest usage with its limit per location:
@@ -222,7 +222,7 @@ next capacity ceiling before ingestion hits it. On terminals that support
 hyperlinks, each quota name links to the project's Cloud console quotas page.
 
 ```console
-$ geadm quota
+$ getop quota
                 Discovery Engine quotas — acme-search-prod (global)
 ┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━┓
 ┃ Quota                  ┃ Location ┃ Usage     ┃ Limit      ┃ Used ┃ Exceeded ┃
@@ -233,10 +233,10 @@ $ geadm quota
 └────────────────────────┴──────────┴───────────┴────────────┴──────┴──────────┘
 ```
 
-### `geadm doctor` — health check
+### `getop doctor` — health check
 
 ```sh
-geadm doctor [--since 24h]
+getop doctor [--since 24h]
 ```
 
 Runs the whole suite concurrently and renders a live PASS/WARN/FAIL table across
@@ -245,8 +245,8 @@ logs, and metric availability. Exits non-zero if any check fails, so it drops
 straight into CI or cron.
 
 ```console
-$ geadm doctor
-                     geadm doctor — acme-search-prod (global)
+$ getop doctor
+                     getop doctor — acme-search-prod (global)
 ┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Check                  ┃ Status ┃ Detail                                    ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
@@ -260,21 +260,21 @@ $ geadm doctor
 └────────────────────────┴────────┴───────────────────────────────────────────┘
 ```
 
-### `geadm version`
+### `getop version`
 
 ```console
-$ geadm version
-geadm 0.2.2 (v0.2.2, commit a1854e8)
+$ getop version
+getop 0.2.2 (v0.2.2, commit a1854e8)
 ```
 
 Prints the release, tag and the git commit the package was built from.
 
-### `geadm update`
+### `getop update`
 
 ```console
-$ geadm update
+$ getop update
 Update available: 0.2.2 → 0.3.0
-$ pipx upgrade geadm
+$ pipx upgrade getop
 ```
 
 Checks PyPI for a newer release and upgrades in place, detecting whether you
@@ -295,8 +295,8 @@ Available on every command:
 Every table above is also available as JSON — pipe it straight into `jq`:
 
 ```sh
-geadm quota --json | jq '.[] | select(.percent_used > 75)'
-geadm ls licenses --json | jq '[.[] | select(.last_login_time == null)] | length'
+getop quota --json | jq '.[] | select(.percent_used > 75)'
+getop ls licenses --json | jq '[.[] | select(.last_login_time == null)] | length'
 ```
 
 ## Authentication
@@ -307,21 +307,21 @@ Authenticate once with Application Default Credentials:
 gcloud auth application-default login
 ```
 
-geadm never reads or writes key files. Each command needs only a viewer role:
+getop never reads or writes key files. Each command needs only a viewer role:
 
 | Role | Used by |
 |---|---|
-| `roles/discoveryengine.viewer` | `geadm ls …`, `geadm info`, `geadm doctor` |
-| `roles/logging.viewer` | `geadm logs …`, `geadm doctor` |
-| `roles/monitoring.viewer` | `geadm stats`, `geadm quota`, `geadm doctor` |
-| `roles/modelarmor.viewer` | `geadm armor --policy` |
+| `roles/discoveryengine.viewer` | `getop ls …`, `getop info`, `getop doctor` |
+| `roles/logging.viewer` | `getop logs …`, `getop doctor` |
+| `roles/monitoring.viewer` | `getop stats`, `getop quota`, `getop doctor` |
+| `roles/modelarmor.viewer` | `getop armor --policy` |
 
 User credentials (as opposed to service accounts) also need a quota project:
-geadm uses the target project automatically, which requires
+getop uses the target project automatically, which requires
 `serviceusage.services.use` there. If you don't have it, use `--quota-project`.
 
 Enabling connector/observability *logging* on a project is a one-time setup
-step requiring `roles/discoveryengine.agentspaceAdmin`; geadm only ever reads
+step requiring `roles/discoveryengine.agentspaceAdmin`; getop only ever reads
 what's there.
 
 ## License

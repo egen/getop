@@ -1,4 +1,4 @@
-"""`geadm logs` — inspect Gemini Enterprise Cloud Logging output.
+"""`getop logs` — inspect Gemini Enterprise Cloud Logging output.
 
 Strictly read-only: the only RPC used is Cloud Logging's entries.list
 (via google.cloud.logging_v2.Client.list_entries). This module never
@@ -30,8 +30,8 @@ from typing import Any, Optional
 
 import typer
 
-from geadm import render
-from geadm.duration import since_rfc3339
+from getop import render
+from getop.duration import since_rfc3339
 
 app = typer.Typer(
     help="View and tail Gemini Enterprise logs.",
@@ -612,7 +612,7 @@ def connector(
     ),
 ) -> None:
     """Show connector activity."""
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
@@ -676,7 +676,7 @@ def user(
         "prompt/response logging is enabled on this project."
     )
 
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
@@ -739,7 +739,7 @@ def ai(
         "(gen_ai.user.message / gen_ai.choice)."
     )
 
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))

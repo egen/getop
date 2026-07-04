@@ -1,4 +1,4 @@
-"""geadm armor — surface Model Armor screening violations.
+"""getop armor — surface Model Armor screening violations.
 
 Reads the Model Armor sanitize-operations log
 (modelarmor.googleapis.com/sanitize_operations), which records every
@@ -13,9 +13,9 @@ from typing import Any, Optional
 
 import typer
 
-from geadm import render
-from geadm.commands.logs import _print_empty_hint, _snippet, collect_entries
-from geadm.duration import since_rfc3339
+from getop import render
+from getop.commands.logs import _print_empty_hint, _snippet, collect_entries
+from getop.duration import since_rfc3339
 
 _ARMOR_LOG_ID = "modelarmor.googleapis.com%2Fsanitize_operations"
 
@@ -303,7 +303,7 @@ def armor_command(
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
     """Show Model Armor violations, a per-filter summary, or the policy."""
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
@@ -345,5 +345,5 @@ def armor_command(
             "Model Armor sanitize-operations",
             "Model Armor may not be configured for this project's Gemini "
             "Enterprise app, or nothing was screened in the window. This log "
-            "carries no user identity — use `geadm logs user` for that.",
+            "carries no user identity — use `getop logs user` for that.",
         )

@@ -1,8 +1,8 @@
-"""Client factory for geadm.
+"""Client factory for getop.
 
 This is the ONLY place API clients are constructed. Every client here is used
 strictly read-only: list_*, get_*, entries.list (logging) and
-list_time_series / query (monitoring). geadm never calls a mutating RPC.
+list_time_series / query (monitoring). getop never calls a mutating RPC.
 
 Auth is Application Default Credentials via google.auth.default(). No key files.
 Required caller roles: roles/discoveryengine.viewer, roles/logging.viewer,

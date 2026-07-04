@@ -1,8 +1,8 @@
-"""Collector behaviour for geadm ls against fake clients."""
+"""Collector behaviour for getop ls against fake clients."""
 
 from conftest import FakeClients, engine, user_license
 
-from geadm.commands import ls
+from getop.commands import ls
 
 
 def test_collect_engines_shapes_dicts():
@@ -118,7 +118,7 @@ def test_collect_licenses_empty():
 def test_licenses_command_reports_no_user_store_on_not_found(app_runner):
     from google.api_core import exceptions as gexceptions
 
-    from geadm.main import app
+    from getop.main import app
 
     def fake_get_clients(project, location, quota_project=None):
         clients = FakeClients()
@@ -129,7 +129,7 @@ def test_licenses_command_reports_no_user_store_on_not_found(app_runner):
         clients._discovery.list_user_licenses = raise_not_found
         return clients
 
-    import geadm.commands.ls as ls_module
+    import getop.commands.ls as ls_module
 
     original = ls_module.get_clients
     ls_module.get_clients = fake_get_clients

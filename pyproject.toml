@@ -1,5 +1,5 @@
 [project]
-name = "geadm"
+name = "getop"
 version = "0.7.0"
 description = "CLI for Google Gemini Enterprise"
 readme = "README.md"
@@ -36,13 +36,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/egen/geadm"
-Repository = "https://github.com/egen/geadm"
-Issues = "https://github.com/egen/geadm/issues"
-Changelog = "https://github.com/egen/geadm/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/egen/getop"
+Repository = "https://github.com/egen/getop"
+Issues = "https://github.com/egen/getop/issues"
+Changelog = "https://github.com/egen/getop/blob/main/CHANGELOG.md"
 
 [project.scripts]
-geadm = "geadm.main:run"
+getop = "getop.main:run"
 
 [dependency-groups]
 dev = ["pytest>=8"]
@@ -55,7 +55,7 @@ build-backend = "hatchling.build"
 path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["geadm"]
+packages = ["getop"]
 
 [tool.hatch.build.targets.sdist]
 # Ship only what a distro packager needs; dev tooling stays in the repo.

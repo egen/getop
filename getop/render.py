@@ -1,4 +1,4 @@
-"""Shared Rich rendering helpers for geadm.
+"""Shared Rich rendering helpers for getop.
 
 All commands render through these helpers so output style stays consistent
 and --json is handled uniformly.

@@ -1,6 +1,6 @@
-"""Build hook: bake the git commit into geadm/_build.py at package build time.
+"""Build hook: bake the git commit into getop/_build.py at package build time.
 
-Installed packages have no .git directory, so `geadm version` reads the
+Installed packages have no .git directory, so `getop version` reads the
 commit from this generated module. Resolution order: GITHUB_SHA (CI builds),
 `git rev-parse` (local builds), then whatever an sdist already carries (the
 wheel-from-sdist step has neither git nor CI env).
@@ -35,7 +35,7 @@ def _resolve_commit(root: str) -> str:
 
 class BuildInfoHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict) -> None:
-        path = os.path.join(self.root, "geadm", "_build.py")
+        path = os.path.join(self.root, "getop", "_build.py")
         commit = _resolve_commit(self.root)
         # Building a wheel from an sdist has neither git nor CI env: keep
         # the value the sdist build baked in.
@@ -44,4 +44,4 @@ class BuildInfoHook(BuildHookInterface):
                 f.write(_TEMPLATE.format(commit=commit or "unknown"))
         # The file is gitignored (generated), so hatchling's VCS-based file
         # selection skips it; force it into the artifact explicitly.
-        build_data.setdefault("force_include", {})[path] = "geadm/_build.py"
+        build_data.setdefault("force_include", {})[path] = "getop/_build.py"

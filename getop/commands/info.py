@@ -1,4 +1,4 @@
-"""geadm info — project-wide Gemini Enterprise overview with per-engine cards.
+"""getop info — project-wide Gemini Enterprise overview with per-engine cards.
 
 Composite read-only view built from the ls collectors (engines, data stores,
 connectors, agents, licenses), gathered concurrently like doctor.
@@ -15,9 +15,9 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.text import Text
 
-from geadm import render
-from geadm.auth import Clients, get_clients
-from geadm.commands import ls as ls_cmd
+from getop import render
+from getop.auth import Clients, get_clients
+from getop.commands import ls as ls_cmd
 
 
 def collect_info(clients: Clients) -> dict:

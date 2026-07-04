@@ -1,4 +1,4 @@
-"""`geadm stats` — query volume, latency and connector sync freshness.
+"""`getop stats` — query volume, latency and connector sync freshness.
 
 Reads Cloud Monitoring time series for discoveryengine.googleapis.com
 metrics. Strictly read-only (list_metric_descriptors / list_time_series
@@ -23,8 +23,8 @@ from google.cloud import monitoring_v3
 from rich.console import Group
 from rich.text import Text
 
-from geadm.duration import since_timestamp
-from geadm.render import err_console, output, table
+from getop.duration import since_timestamp
+from getop.render import err_console, output, table
 
 # google.cloud.monitoring_v3 re-exports request/response/aggregation types but
 # not MetricDescriptor itself (it stays in the underlying google.api proto).
@@ -115,7 +115,7 @@ def collect_stats(
 
     `categories` restricts which metric categories ("query_volume", "latency",
     "connector") get per-metric time-series queries; discovery still lists
-    everything. None means all categories (the default for `geadm stats`).
+    everything. None means all categories (the default for `getop stats`).
     """
     start_time = since_timestamp(since)  # raises ValueError on bad --since
     end_time = datetime.now(timezone.utc)
@@ -462,7 +462,7 @@ def quota_command(
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
     """Show quota usage."""
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))
@@ -509,7 +509,7 @@ def stats_command(
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
     """Show usage metrics."""
-    from geadm.auth import get_clients
+    from getop.auth import get_clients
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from google.api import metric_pb2
 from google.cloud import monitoring_v3
 
-from geadm.commands import stats
+from getop.commands import stats
 
 MD = metric_pb2.MetricDescriptor
 

@@ -39,7 +39,7 @@ class FakeDiscoveryClient:
 
 
 class FakeClients:
-    """Duck-type of geadm.auth.Clients for collector tests."""
+    """Duck-type of getop.auth.Clients for collector tests."""
 
     def __init__(
         self,

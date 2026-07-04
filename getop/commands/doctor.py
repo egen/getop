@@ -1,4 +1,4 @@
-"""geadm doctor — composite read-only health check for Gemini Enterprise.
+"""getop doctor — composite read-only health check for Gemini Enterprise.
 
 Reuses the collect functions from ls/logs/stats; issues only list/get reads.
 Checks run concurrently and the results table renders live, with a spinner
@@ -16,11 +16,11 @@ from rich.live import Live
 from rich.spinner import Spinner
 from rich.text import Text
 
-from geadm import duration, render
-from geadm.auth import Clients, get_clients
-from geadm.commands import logs as logs_cmd
-from geadm.commands import ls as ls_cmd
-from geadm.commands import stats as stats_cmd
+from getop import duration, render
+from getop.auth import Clients, get_clients
+from getop.commands import logs as logs_cmd
+from getop.commands import ls as ls_cmd
+from getop.commands import stats as stats_cmd
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 _STATUS_STYLE = {OK: "bold green", WARN: "bold yellow", FAIL: "bold red"}
@@ -186,7 +186,7 @@ def doctor_command(
 
     checks = _build_checks(clients, since)
     results: list[dict | None] = [None] * len(checks)
-    title = f"geadm doctor — {clients.project} ({clients.location})"
+    title = f"getop doctor — {clients.project} ({clients.location})"
 
     with Live(
         _result_table(title, checks, results),

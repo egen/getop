@@ -1,10 +1,10 @@
-"""Filter builders, entry normalization and tail formatting for geadm logs."""
+"""Filter builders, entry normalization and tail formatting for getop logs."""
 
 from types import SimpleNamespace
 
 import pytest
 
-from geadm.commands import logs
+from getop.commands import logs
 
 
 # ---- filters -----------------------------------------------------------------

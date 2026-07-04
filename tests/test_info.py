@@ -1,8 +1,8 @@
-"""collect_info aggregation and connector/datastore mapping for geadm info."""
+"""collect_info aggregation and connector/datastore mapping for getop info."""
 
 from conftest import FakeClients, engine, user_license
 
-from geadm.commands import info
+from getop.commands import info
 
 
 def _clients():

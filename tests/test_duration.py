@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from geadm.duration import parse_duration, since_rfc3339, since_timestamp
+from getop.duration import parse_duration, since_rfc3339, since_timestamp
 
 
 @pytest.mark.parametrize(

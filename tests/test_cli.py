@@ -2,7 +2,7 @@
 
 import pytest
 
-from geadm.main import app
+from getop.main import app
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,7 @@ def test_help_is_concise_no_iam_or_api_internals(app_runner):
 def test_version_command(app_runner):
     result = app_runner.invoke(app, ["version"])
     assert result.exit_code == 0
-    assert "geadm " in result.output
+    assert "getop " in result.output
     assert "commit" in result.output
 
 
@@ -62,7 +62,7 @@ def test_version_json(app_runner):
 
 
 def test_update_check_reports_when_current(app_runner, monkeypatch):
-    from geadm import main
+    from getop import main
 
     monkeypatch.setattr(main, "_installed_version", lambda: "9.9.9")
     monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "9.9.9")
@@ -72,7 +72,7 @@ def test_update_check_reports_when_current(app_runner, monkeypatch):
 
 
 def test_update_check_reports_when_outdated(app_runner, monkeypatch):
-    from geadm import main
+    from getop import main
 
     monkeypatch.setattr(main, "_installed_version", lambda: "0.1.0")
     monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "0.2.0")
@@ -82,7 +82,7 @@ def test_update_check_reports_when_outdated(app_runner, monkeypatch):
 
 
 def test_update_offline_fails_cleanly(app_runner, monkeypatch):
-    from geadm import main
+    from getop import main
 
     monkeypatch.setattr(main, "_latest_version", lambda *a, **k: None)
     result = app_runner.invoke(app, ["update", "--check"])
@@ -92,7 +92,7 @@ def test_update_offline_fails_cleanly(app_runner, monkeypatch):
 def test_update_json(app_runner, monkeypatch):
     import json
 
-    from geadm import main
+    from getop import main
 
     monkeypatch.setattr(main, "_installed_version", lambda: "0.1.0")
     monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "0.2.0")
@@ -106,7 +106,7 @@ def test_update_json(app_runner, monkeypatch):
 def test_install_method_forces_fresh_index():
     """update must bypass the client index cache, or it no-ops right after a
     release when the cached index still lists the old version."""
-    from geadm.main import _install_method
+    from getop.main import _install_method
 
     _, argv = _install_method()
     joined = " ".join(argv)
@@ -114,34 +114,34 @@ def test_install_method_forces_fresh_index():
 
 
 def test_version_tuple_compares():
-    from geadm.main import _version_tuple
+    from getop.main import _version_tuple
 
     assert _version_tuple("0.2.0") > _version_tuple("0.1.9")
     assert _version_tuple("0.10.0") > _version_tuple("0.9.0")
 
 
 def test_upgrade_succeeded_by_version_reached():
-    from geadm.main import _upgrade_succeeded
+    from getop.main import _upgrade_succeeded
 
     # installed reached latest, even if output is empty/stale
     assert _upgrade_succeeded("", "0.5.0", "0.5.0") is True
 
 
 def test_upgrade_succeeded_by_marker_when_version_read_stale():
-    from geadm.main import _upgrade_succeeded
+    from getop.main import _upgrade_succeeded
 
     # running process still reads old version, but pipx confirmed the upgrade
     assert _upgrade_succeeded(
-        "upgraded package geadm from 0.4.0 to 0.5.0", "0.4.0", "0.5.0"
+        "upgraded package getop from 0.4.0 to 0.5.0", "0.4.0", "0.5.0"
     ) is True
 
 
 def test_upgrade_noop_is_not_success():
-    from geadm.main import _upgrade_succeeded
+    from getop.main import _upgrade_succeeded
 
     # the reported propagation-lag case: pipx no-op'd, version didn't move
     assert _upgrade_succeeded(
-        "geadm is already at latest version 0.4.0", "0.4.0", "0.5.0"
+        "getop is already at latest version 0.4.0", "0.4.0", "0.5.0"
     ) is False
 
 

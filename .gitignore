@@ -3,4 +3,4 @@ __pycache__/
 *.egg-info/
 .claude/settings.local.json
 dist/
-geadm/_build.py
+getop/_build.py

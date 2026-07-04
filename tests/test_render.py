@@ -2,7 +2,7 @@ import json
 
 from rich.text import Text
 
-from geadm import render
+from getop import render
 
 
 def test_severity_style_known_and_unknown():

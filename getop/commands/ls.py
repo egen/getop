@@ -1,4 +1,4 @@
-"""geadm ls — list Gemini Enterprise resources (read-only).
+"""getop ls — list Gemini Enterprise resources (read-only).
 
 Every command in this module walks the `default_collection` (or
 `default_user_store`) hierarchy of a Discovery Engine project and prints what
@@ -6,7 +6,7 @@ it finds. Nothing here ever calls a mutating RPC (create/update/delete/import/
 purge) — only list_*, get_* and Clients.rest_get (HTTP GET) are used. The only
 IAM permission required is `roles/discoveryengine.viewer`.
 
-Data collection is split from rendering so `geadm doctor` (and tests) can
+Data collection is split from rendering so `getop doctor` (and tests) can
 call `collect_engines` / `collect_datastores` / `collect_connector` /
 `collect_agents` / `collect_licenses` directly and get plain JSON-safe dicts
 back.
@@ -21,8 +21,8 @@ import typer
 from google.api_core import exceptions as gexceptions
 from google.cloud import discoveryengine_v1
 
-from geadm.auth import Clients, get_clients
-from geadm.render import output, table
+from getop.auth import Clients, get_clients
+from getop.render import output, table
 
 app = typer.Typer(
     help="List Gemini Enterprise resources.",
@@ -382,7 +382,7 @@ def connectors(
 
 
 def _print_permission_error(clients: Clients) -> None:
-    from geadm.render import err_console
+    from getop.render import err_console
 
     err_console.print(
         "[bold red]Permission denied[/bold red] reading the data connector "
@@ -423,7 +423,7 @@ def licenses(
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
     """List user licenses."""
-    from geadm.render import err_console
+    from getop.render import err_console
 
     state = ctx.obj
     clients = get_clients(state.project, state.location, getattr(state, "quota_project", None))

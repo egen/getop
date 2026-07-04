@@ -250,8 +250,8 @@ wheels = [
 ]
 
 [[package]]
-name = "geadm"
-version = "0.1.1"
+name = "getop"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-cloud-discoveryengine" },

@@ -1,13 +1,13 @@
 """Source-level guard encoding the read-only design guarantee.
 
 Mirrors the readonly-auditor: no mutating RPC verbs, no non-GET HTTP,
-no key-file auth, and clients constructed only in geadm/auth.py.
+no key-file auth, and clients constructed only in getop/auth.py.
 """
 
 import re
 from pathlib import Path
 
-PACKAGE = Path(__file__).resolve().parent.parent / "geadm"
+PACKAGE = Path(__file__).resolve().parent.parent / "getop"
 
 MUTATING_CALL = re.compile(
     r"\.(create|update|patch|delete|purge|import|set_iam)_[a-z_]*\s*\("

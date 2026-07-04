@@ -1,8 +1,8 @@
-"""Status logic for geadm doctor with all collectors monkeypatched."""
+"""Status logic for getop doctor with all collectors monkeypatched."""
 
 from types import SimpleNamespace
 
-from geadm.commands import doctor
+from getop.commands import doctor
 
 
 def _fake_clients():
