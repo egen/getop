@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/egen/geadm/compare/v0.7.0...v1.0.0) (2026-07-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* command and package are now getop.
+
+### Features
+
+* rename project geadm → getop ([#41](https://github.com/egen/geadm/issues/41)) ([393abc6](https://github.com/egen/geadm/commit/393abc69d848e50a633f29cfc29f285ef51994ff))
+
 ## [0.7.0](https://github.com/egen/geadm/compare/v0.6.0...v0.7.0) (2026-07-04)
 
 
