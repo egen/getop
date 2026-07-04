@@ -188,6 +188,52 @@ def collect_policy(clients: Any, since: str) -> list[dict]:
     return templates
 
 
+def summarise(rows: list[dict]) -> list[dict]:
+    """Aggregate violation rows into per-filter hit counts with an example.
+
+    A single entry can match several filters, so it counts toward each. The
+    confidence suffix is stripped for grouping (pi_and_jailbreak, not
+    pi_and_jailbreak(HIGH)). Rows arrive newest-first, so the first example
+    kept per filter is the most recent one.
+    """
+    agg: dict[str, dict] = {}
+    for row in rows:
+        ts = row.get("timestamp")
+        content = row.get("content")
+        for f in row.get("matched_filters") or []:
+            key = f.split("(", 1)[0]
+            a = agg.setdefault(
+                key, {"filter": key, "hits": 0, "last_seen": None, "example": None}
+            )
+            a["hits"] += 1
+            if ts and (a["last_seen"] is None or ts > a["last_seen"]):
+                a["last_seen"] = ts
+            if a["example"] is None and content:
+                a["example"] = content
+    return sorted(agg.values(), key=lambda a: (-a["hits"], a["filter"]))
+
+
+def _render_summary(summary: list[dict], since: str) -> Any:
+    from rich.text import Text
+
+    if not summary:
+        return Text(f"No Model Armor violations in the last {since}.", style="green")
+    rows = [
+        (
+            s["filter"],
+            str(s["hits"]),
+            s["last_seen"] or "",
+            _snippet(s["example"], 60),
+        )
+        for s in summary
+    ]
+    return render.table(
+        f"Model Armor hits by filter ({since})",
+        ["Filter", "Hits", "Last seen", "Example input"],
+        rows,
+    )
+
+
 def _render_table(rows: list[dict], since: str, matched_only: bool) -> Any:
     scope = "violations" if matched_only else "screenings"
     title = f"Model Armor {scope} ({since})"
@@ -246,6 +292,9 @@ def armor_command(
     policy: bool = typer.Option(
         False, "--policy", help="Print the configured Model Armor template(s) instead."
     ),
+    summary: bool = typer.Option(
+        False, "--summary", help="Aggregate violations by filter category."
+    ),
     since: str = typer.Option("24h", "--since", help="Look-back window, e.g. 1h, 24h, 7d."),
     all_: bool = typer.Option(
         False, "--all", help="Include screenings that passed (not just violations)."
@@ -253,7 +302,7 @@ def armor_command(
     limit: int = typer.Option(50, "--limit", help="Maximum entries to return."),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
-    """Show Model Armor violations, or the configured policy with --policy."""
+    """Show Model Armor violations, a per-filter summary, or the policy."""
     from geadm.auth import get_clients
 
     state = ctx.obj
@@ -273,7 +322,7 @@ def armor_command(
     render.warn_banner(
         "Output includes prompt/response content that Model Armor screened."
     )
-    matched_only = not all_
+    matched_only = summary or not all_
 
     try:
         filter_str = armor_filter(clients.project, since, matched_only)
@@ -282,6 +331,12 @@ def armor_command(
         raise typer.Exit(code=1) from None
 
     rows = collect_violations(clients, filter_str, limit)
+
+    if summary:
+        aggregates = summarise(rows)
+        render.output(aggregates, _render_summary(aggregates, since), as_json)
+        return
+
     render.output(rows, _render_table(rows, since, matched_only), as_json)
     if not rows:
         _print_empty_hint(

@@ -148,6 +148,20 @@ that tripped and their confidence (jailbreak, RAI categories, CSAM,
 malicious URIs). Violations only by default; `--all` includes clean
 screenings. Carries no user identity — pair with `geadm logs user`.
 
+Add `--summary` for a per-filter rollup — hit counts, last seen, and an example
+input per category — instead of the event-by-event list:
+
+```console
+$ geadm armor --summary --since 7d
+              Model Armor hits by filter (7d)
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃ Filter           ┃ Hits ┃ Last seen           ┃ Example input       ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│ pi_and_jailbreak │ 3    │ 2026-07-03T12:49:03 │ Ignore all previou… │
+│ malicious_uris   │ 2    │ 2026-07-03T09:14:00 │ http://testsafebro… │
+└──────────────────┴──────┴─────────────────────┴─────────────────────┘
+```
+
 Add `--policy` to print the configured Model Armor template(s) instead — the
 filters that are enabled and at what confidence:
 
