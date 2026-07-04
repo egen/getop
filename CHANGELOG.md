@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/egen/getop/compare/v1.0.2...v1.1.0) (2026-07-04)
+
+
+### Features
+
+* **ls:** --csv export for ls licenses ([#53](https://github.com/egen/getop/issues/53)) ([d85fce3](https://github.com/egen/getop/commit/d85fce334d60aa068ca7802eacf743904d159172))
+
+
+### Documentation
+
+* **readme:** explain API drift as the core maintenance challenge ([#51](https://github.com/egen/getop/issues/51)) ([cb9c839](https://github.com/egen/getop/commit/cb9c8390c8c68bd3226f371d1fab4f439fbd65ed))
+* **readme:** trim paragraphs, tighten info, refresh badges ([#49](https://github.com/egen/getop/issues/49)) ([eaca08c](https://github.com/egen/getop/commit/eaca08c449db23995f88364637b3eafb18ce563c))
+
 ## [1.0.2](https://github.com/egen/getop/compare/v1.0.1...v1.0.2) (2026-07-04)
 
 
