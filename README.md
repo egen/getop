@@ -1,9 +1,10 @@
 # getop
 
 [![Gemini Enterprise](https://img.shields.io/badge/Gemini%20Enterprise-Discovery%20Engine-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com/gemini/enterprise)
-[![PyPI](https://img.shields.io/pypi/v/getop)](https://pypi.org/project/getop/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![PyPI](https://img.shields.io/pypi/v/getop?label=PyPI&color=006dad)](https://pypi.org/project/getop/)
+[![CI](https://github.com/egen/getop/actions/workflows/test.yml/badge.svg)](https://github.com/egen/getop/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/pypi/l/getop?color=green)](LICENSE)
 
 **getop** is a command-line tool for Google Gemini Enterprise administrators.
 
@@ -46,15 +47,6 @@ $ getop info
 ╰──────── support-search_1775663018 ─────────╯
 ```
 
-Two environments side by side. At a glance: prod's Jira connector is `PAUSED`
-(the 2/3 tile), licenses are at 84%, and sandbox has `session-sharing` and
-`onedrive-upload` disabled where prod allows them.
-
-By design, the current release is strictly read-only — every command works with
-viewer roles alone, so it can be handed to anyone on the team without
-change-risk. It may grow administrative verbs (e.g. triggering connector syncs,
-managing agents) in a future release.
-
 **Want to contribute?** getop was built with an AI-agent scaffold that ships in
 the repo and is yours to use too — see [Contributing](#contributing).
 
@@ -71,12 +63,9 @@ Also works with `uv tool install getop` or `pip install getop`. See
 
 ### `getop info` — project overview
 
-A whole-project dashboard: summary tiles (engines, data stores, connector
-health, agents, and license seats / activation / unmet demand) plus a card per
-engine showing its data stores with their connector sources, its agents ("My
-Agent" user defaults collapsed into a single ×N line), and its feature toggles.
-Diffing two environments' cards is the fastest way to spot config drift. Output
-is shown at the top of this page.
+Project-wide dashboard: summary tiles plus a card per engine — data stores with
+their connector sources, agents, and feature toggles. Diffing two environments'
+cards is the fastest way to spot config drift (shown at the top of this page).
 
 ### `getop ls` — inventory
 
