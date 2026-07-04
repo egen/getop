@@ -218,7 +218,8 @@ geadm quota [--since 24h]
 Pairs each Discovery Engine quota's latest usage with its limit per location:
 percent used (highlighted at ≥75% / ≥90%), byte quotas in human units, and
 counts of quota-exceeded events over the window — the quickest way to spot the
-next capacity ceiling before ingestion hits it.
+next capacity ceiling before ingestion hits it. On terminals that support
+hyperlinks, each quota name links to the project's Cloud console quotas page.
 
 ```console
 $ geadm quota

@@ -412,20 +412,31 @@ def _pct_text(pct: Any) -> Any:
     return Text(f"{pct:.1f}%", style=style)
 
 
-def _render_quota(rows: list[dict], since: str, header: str) -> Any:
+def _quota_console_url(project: str) -> str:
+    """Cloud console quotas page for the project, pre-filtered to Discovery
+    Engine. Terminals that support OSC 8 hyperlinks make the quota names
+    clickable; others show plain text."""
+    return (
+        "https://console.cloud.google.com/iam-admin/quotas"
+        f"?project={project}&service=discoveryengine.googleapis.com"
+    )
+
+
+def _render_quota(rows: list[dict], since: str, header: str, project: str) -> Any:
     if not rows:
         return Text(
             "No discoveryengine.googleapis.com quota metrics with data were "
             "found for this project/window.",
             style="yellow",
         )
+    url = _quota_console_url(project)
     fmt_rows = []
     for r in rows:
         size_quota = "size" in r["quota"]
         fmt = _fmt_bytes if size_quota else _fmt_number
         fmt_rows.append(
             (
-                r["quota"],
+                Text(r["quota"], style=f"underline link {url}"),
                 r["location"],
                 fmt(r["usage"]),
                 fmt(r["limit"]),
@@ -475,7 +486,9 @@ def quota_command(
 
     output(
         rows,
-        _render_quota(rows, since, f"{clients.project} ({clients.location})"),
+        _render_quota(
+            rows, since, f"{clients.project} ({clients.location})", clients.project
+        ),
         as_json,
     )
 
