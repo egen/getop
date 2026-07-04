@@ -5,11 +5,12 @@
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-**getop** is a command-line tool for Google Gemini Enterprise administrators —
-inspect, monitor, and troubleshoot a deployment without leaving your terminal.
+**getop** is a command-line tool for Google Gemini Enterprise administrators.
+
+getop allows you to:
 
 - **Inventory everything deployed** — engines, data stores, connectors, agents, and license seats in one overview
-- **Keep connectors healthy** — sync state, freshness, and errors across every collection
+- **Monitor connector health** — sync state, freshness, and errors across every collection
 - **Investigate prompts and replies (if logging is enabled)** — per user or fleet-wide, live-tailable
 - **See what Model Armor caught** — jailbreak, RAI, and malicious-URI hits, plus the active policy
 - **Stay ahead of quota** — usage vs limits with one-click links to the Cloud console
