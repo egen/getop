@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/egen/getop/compare/v1.2.0...v1.2.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **update:** detect local-path installs instead of blaming PyPI propagation ([#57](https://github.com/egen/getop/issues/57)) ([1c1bb9d](https://github.com/egen/getop/commit/1c1bb9d101a744879ffb3194a46f2548173aef67))
+
 ## [1.2.0](https://github.com/egen/getop/compare/v1.1.0...v1.2.0) (2026-07-06)
 
 
