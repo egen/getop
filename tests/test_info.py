@@ -116,6 +116,10 @@ def test_collect_info_attaches_engine_features():
     engine_row = data["engines"][0]
     assert engine_row["app_type"] == "APP_TYPE_INTRANET"
     assert engine_row["features"]["model-selector"] == "FEATURE_STATE_ON"
+    # shared fetch with `getop config`: the fixture response has no
+    # observabilityConfig, so the tri-state fields are None (unknown), not off
+    assert engine_row["observability_enabled"] is None
+    assert engine_row["sensitive_logging_enabled"] is None
 
 
 def test_wrap_names_chunks_lines():
