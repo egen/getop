@@ -105,6 +105,76 @@ def test_update_json(app_runner, monkeypatch):
     assert data["outdated"] is True
 
 
+def test_local_install_source_reads_direct_url(monkeypatch):
+    """PEP 610: a path install carries direct_url.json; PyPI installs don't."""
+    import importlib.metadata
+    from types import SimpleNamespace
+
+    from getop.main import _local_install_source
+
+    def fake_distribution(payload):
+        return lambda name: SimpleNamespace(read_text=lambda f: payload)
+
+    monkeypatch.setattr(
+        importlib.metadata,
+        "distribution",
+        fake_distribution('{"url": "file:///Users/x/src/getop", "dir_info": {}}'),
+    )
+    assert _local_install_source() == "/Users/x/src/getop"
+
+    monkeypatch.setattr(importlib.metadata, "distribution", fake_distribution(None))
+    assert _local_install_source() is None
+
+    monkeypatch.setattr(importlib.metadata, "distribution", fake_distribution("{not json"))
+    assert _local_install_source() is None
+
+
+def test_update_blocked_by_local_source(app_runner, monkeypatch):
+    """The issue #56 scenario: spec points at a checkout, so upgrading would
+    no-op against PyPI — update must say so instead of blaming propagation."""
+    from getop import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "1.1.0")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "1.2.0")
+    monkeypatch.setattr(main, "_local_install_source", lambda: "/Users/x/src/getop")
+    result = app_runner.invoke(app, ["update"])
+    assert result.exit_code == 1
+    assert "not PyPI" in result.output
+    assert "/Users/x/src/getop" in result.output
+    assert "propagating" not in result.output
+
+
+def test_update_check_with_local_source_reports_and_exits_zero(app_runner, monkeypatch):
+    from getop import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "1.1.0")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "1.2.0")
+    monkeypatch.setattr(main, "_local_install_source", lambda: "/Users/x/src/getop")
+    result = app_runner.invoke(app, ["update", "--check"])
+    assert result.exit_code == 0
+    assert "not PyPI" in result.output
+
+
+def test_update_json_includes_local_source(app_runner, monkeypatch):
+    import json
+
+    from getop import main
+
+    monkeypatch.setattr(main, "_installed_version", lambda: "1.1.0")
+    monkeypatch.setattr(main, "_latest_version", lambda *a, **k: "1.2.0")
+    monkeypatch.setattr(main, "_local_install_source", lambda: "/Users/x/src/getop")
+    result = app_runner.invoke(app, ["update", "--json"])
+    assert json.loads(result.output)["local_source"] == "/Users/x/src/getop"
+
+
+def test_reinstall_hint_per_method():
+    from getop.main import _reinstall_hint
+
+    assert _reinstall_hint("pipx") == "pipx uninstall getop && pipx install getop"
+    assert _reinstall_hint("uv tool") == "uv tool install --force getop"
+    assert "pip install --upgrade getop" in _reinstall_hint("pip")
+
+
 def test_install_method_forces_fresh_index():
     """update must bypass the client index cache, or it no-ops right after a
     release when the cached index still lists the old version."""

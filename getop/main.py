@@ -169,6 +169,44 @@ def _install_method() -> tuple[str, list[str] | None]:
     ]
 
 
+def _local_install_source() -> str | None:
+    """Where getop was installed from, when that place isn't PyPI.
+
+    Installers (pip, pipx, uv) record a PEP 610 direct_url.json for
+    local-path / URL / editable installs; a PyPI install has none. This
+    matters because `pipx upgrade` and `uv tool upgrade` re-resolve the
+    recorded spec, so a checkout-installed getop reinstalls from disk
+    forever and never reaches a new PyPI release.
+    """
+    import json
+    from importlib.metadata import PackageNotFoundError, distribution
+
+    try:
+        raw = distribution("getop").read_text("direct_url.json")
+    except PackageNotFoundError:
+        return None
+    if not raw:
+        return None
+    try:
+        url = json.loads(raw).get("url") or ""
+    except ValueError:
+        return None
+    return url.removeprefix("file://") or None
+
+
+def _reinstall_hint(method: str) -> str:
+    """Command that switches the install back to PyPI releases."""
+    import sys
+
+    if method == "pipx":
+        # pipx's uv backend refuses `install --force` over a venv it didn't
+        # create this session, so the reliable path is uninstall + install.
+        return "pipx uninstall getop && pipx install getop"
+    if method == "uv tool":
+        return "uv tool install --force getop"
+    return f"{sys.executable} -m pip install --upgrade getop"
+
+
 def _version_tuple(v: str) -> tuple:
     parts = []
     for chunk in v.split("."):
@@ -211,6 +249,7 @@ def update(
     current = _installed_version()
     latest = _latest_version()
     method, argv = _install_method()
+    local_source = _local_install_source()
     outdated = latest is not None and _version_tuple(latest) > _version_tuple(current)
 
     if as_json:
@@ -220,6 +259,7 @@ def update(
                 "latest": latest,
                 "outdated": outdated,
                 "install_method": method,
+                "local_source": local_source,
             }
         )
         return
@@ -232,6 +272,17 @@ def update(
         return
 
     console.print(f"Update available: [bold]{current}[/bold] → [bold green]{latest}[/bold green]")
+    if local_source:
+        # An upgrade via the recorded spec would reinstall from this source
+        # and report the misleading "not installable yet" propagation hint.
+        console.print(
+            f"[yellow]getop was installed from {local_source}, not PyPI[/yellow] — "
+            f"upgrading would just reinstall from there."
+        )
+        console.print(f"Switch back to PyPI releases: [bold]{_reinstall_hint(method)}[/bold]")
+        if check:
+            return
+        raise typer.Exit(code=1)
     if check:
         console.print(f"Run [bold]getop update[/bold] (or `{' '.join(argv)}`).")
         return

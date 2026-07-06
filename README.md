@@ -313,7 +313,10 @@ $ pipx upgrade getop
 ```
 
 Checks PyPI for a newer release and upgrades in place, detecting whether you
-installed via pipx, uv or pip. Use `--check` to only report.
+installed via pipx, uv or pip. Use `--check` to only report. If getop was
+installed from a local checkout rather than PyPI (e.g. for testing a branch),
+`update` says so and prints the command to switch back to PyPI releases
+instead of attempting an upgrade that can't succeed.
 
 ### Global options
 
