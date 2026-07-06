@@ -18,6 +18,7 @@ from rich.text import Text
 from getop import render
 from getop.auth import Clients, get_clients
 from getop.commands import ls as ls_cmd
+from getop.commands.config import _wrap_names, fetch_engine_config, normalize_features
 
 
 def collect_info(clients: Clients) -> dict:
@@ -87,53 +88,18 @@ def _attach_engine_details(
     clients: Clients, engines: list[dict], errors: dict[str, str]
 ) -> None:
     """Enrich engine dicts with the v1alpha-only detail fields (features map,
-    app type) that the published client's Engine proto doesn't carry."""
+    app type, observability config) that the published client's Engine proto
+    doesn't carry — shared with `getop config` via fetch_engine_config."""
 
     def fetch(engine: dict) -> None:
         try:
-            data = clients.rest_get(f"v1alpha/{engine['name']}")
+            engine.update(fetch_engine_config(clients, engine["name"]))
         except Exception as exc:  # noqa: BLE001 - details are a nice-to-have
             errors["engine_details"] = f"{type(exc).__name__}: {exc}"
-            return
-        engine["features"] = data.get("features") or {}
-        engine["app_type"] = data.get("appType")
-        engine["marketplace_agent_visibility"] = data.get("marketplaceAgentVisibility")
 
     if engines:
         with ThreadPoolExecutor(max_workers=min(8, len(engines))) as pool:
             list(pool.map(fetch, engines))
-
-
-def normalize_features(raw: dict[str, str]) -> dict[str, bool]:
-    """Feature map -> capability name -> enabled.
-
-    GE encodes some toggles inverted (`disable-X = FEATURE_STATE_ON` means X
-    is off); strip the prefix and flip so every entry reads as a capability.
-    """
-    normalized: dict[str, bool] = {}
-    for key, value in (raw or {}).items():
-        on = value == "FEATURE_STATE_ON"
-        if key.startswith("disable-"):
-            normalized[key.removeprefix("disable-")] = not on
-        else:
-            normalized[key] = on
-    return normalized
-
-
-def _wrap_names(names: list[str], prefix: str, width: int = 52) -> list[str]:
-    """Chunk feature names into indented lines so cards stay compact."""
-    lines: list[str] = []
-    current = ""
-    for name in names:
-        candidate = f"{current} {name}".strip()
-        if current and len(candidate) > width:
-            lines.append(current)
-            current = name
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    return [f"{prefix}{line}" for line in lines]
 
 
 def _connector_by_datastore(connectors: list[dict]) -> dict[str, dict]:
@@ -276,6 +242,10 @@ def _engine_card(engine: dict, data: dict, ds_to_connector: dict[str, dict]) -> 
             f" · created {(engine.get('create_time') or '?')[:10]}[/dim]"
         )
     )
+    if engine.get("sensitive_logging_enabled") is True:
+        lines.append(
+            Text.from_markup("[bold red]⚠ prompt/response logging enabled[/bold red]")
+        )
 
     ds_ids = engine.get("data_store_ids") or []
     lines.append(Text.from_markup(f"[bold]Data stores ({len(ds_ids)})[/bold]"))

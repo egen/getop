@@ -60,6 +60,7 @@ def main(
 
 from getop.commands import doctor as doctor_cmd  # noqa: E402
 from getop.commands import armor as armor_cmd  # noqa: E402
+from getop.commands import config as config_cmd  # noqa: E402
 from getop.commands import info as info_cmd  # noqa: E402
 from getop.commands import logs as logs_cmd  # noqa: E402
 from getop.commands import ls as ls_cmd  # noqa: E402
@@ -71,6 +72,7 @@ app.command(name="stats")(stats_cmd.stats_command)
 app.command(name="quota")(stats_cmd.quota_command)
 app.command(name="doctor")(doctor_cmd.doctor_command)
 app.command(name="info")(info_cmd.info_command)
+app.command(name="config")(config_cmd.config_command)
 app.command(name="armor")(armor_cmd.armor_command)
 
 

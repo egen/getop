@@ -11,6 +11,7 @@
 getop allows you to:
 
 - **Inventory everything deployed** — engines, data stores, connectors, agents, and license seats in one overview
+- **Audit app configuration** — observability, prompt/response logging, knowledge graph, and feature toggles per app
 - **Monitor connector health** — sync state, freshness, and errors across every collection
 - **Investigate prompts and replies (if logging is enabled)** — per user or fleet-wide, live-tailable
 - **See what Model Armor caught** — jailbreak, RAI, and malicious-URI hits, plus the active policy
@@ -66,6 +67,44 @@ Also works with `uv tool install getop` or `pip install getop`. See
 Project-wide dashboard: summary tiles plus a card per engine — data stores with
 their connector sources, agents, and feature toggles. Diffing two environments'
 cards is the fastest way to spot config drift (shown at the top of this page).
+
+### `getop config` — app configuration
+
+```sh
+getop config              # one row per app: the key toggles
+getop config <app-id>     # full detail card for one app
+```
+
+Shows the settings an admin sees on an app's console Configurations pages:
+observability (OpenTelemetry traces/logs export), prompt/response content
+logging, knowledge graph, agent gallery visibility, analytics, and CMEK, plus
+the full feature-toggle map on the per-app card. Prompt/response logging is
+highlighted in red when enabled — that's the toggle that stores end-user
+conversation content (and the one that decides whether `getop logs user`
+has anything to show).
+
+```console
+$ getop config
+              App configuration — my-project (global)
+┏━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ App         ┃ Type     ┃ Observability ┃ Prompt logging ┃ Knowledge graph ┃ Agent gallery ┃ Analytics ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ HR Portal   │ intranet │ ✓ on          │ ⚠ ON           │ cloud           │ —             │ ✓ on      │
+│ hr-portal   │          │               │                │                 │               │           │
+│ Legal       │ intranet │ ✗ off         │ ✗ off          │ —               │ —             │ ✓ on      │
+│ legal-app   │          │               │                │                 │               │           │
+└─────────────┴──────────┴───────────────┴────────────────┴─────────────────┴───────────────┴───────────┘
+```
+
+A dim `—` means the API didn't return that config block for the app (typical
+for older apps or settings never touched), which is *unknown* — not the same
+as `✗ off`. `--json` additionally includes the raw feature map alongside the
+normalized one (Gemini Enterprise encodes some toggles inverted as
+`disable-*` keys; getop flips them so every entry reads as a capability).
+
+These fields come from the `v1alpha` Engine resource — the published client
+proto doesn't carry them — so they may drift as the API evolves; unknown
+values render as `—` rather than guesses.
 
 ### `getop ls` — inventory
 
