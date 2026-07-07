@@ -11,6 +11,7 @@
 getop allows you to:
 
 - **Inventory everything deployed** — engines, data stores, connectors, agents, and license seats in one overview
+- **Watch it live** — `getop top` with active users (DAU/WAU/MAU), traffic, connectors, and quota on one refreshing screen
 - **Audit app configuration** — observability, prompt/response logging, knowledge graph, and feature toggles per app
 - **Monitor connector health** — sync state, freshness, and errors across every collection
 - **Investigate prompts and replies (if logging is enabled)** — per user or fleet-wide, live-tailable
@@ -67,6 +68,43 @@ Also works with `uv tool install getop` or `pip install getop`. See
 Project-wide dashboard: summary tiles plus a card per engine — data stores with
 their connector sources, agents, and feature toggles. Diffing two environments'
 cards is the fastest way to spot config drift (shown at the top of this page).
+
+### `getop top` — live dashboard
+
+```sh
+getop top                 # full-screen, refreshes every 30s, Ctrl+C to quit
+getop top --once          # single snapshot (also: --json)
+getop top -n 60 --since 24h
+```
+
+The command the name promised: a `top`-style live view of the project —
+active users, query volume and latency, connector health, quota, and Model
+Armor hits, refreshed on an interval.
+
+Active users are derived from license last-login times: anyone active in a
+trailing window necessarily has their last login inside it, so the 24h / 7d /
+30d counts are exact as of now — no logging or analytics export required.
+(Historical curves are a different story: each login overwrites the previous
+timestamp, so past days can't be reconstructed this way. True per-day history
+needs the user-activity log, which requires observability logging.)
+
+```console
+$ getop top --once
+getop top — acme-search-prod (global) · window 1h · refreshed 09:14:02
+
+╭─── Active 24h ───╮ ╭─── Active 7d ────╮ ╭─── Active 30d ───╮ ╭─── Licenses ────╮
+│        41        │ │        87        │ │       112        │ │  500 assigned   │
+╰──────────────────╯ ╰──────────────────╯ ╰──────────────────╯ ╰─────────────────╯
+
+╭──────── Queries & latency ─────────╮ ╭──────────── Connectors ────────────╮
+│  request_count: 1,234 (sum, 1h)    │ │  sharepoint ACTIVE synced 2h ago   │
+╰────────────────────────────────────╯ ╰────────────────────────────────────╯
+```
+
+Every panel reuses an existing read-only collector (`ls`, `stats`, `quota`,
+`armor`), so `top` needs no extra permissions beyond the viewer roles getop
+already requires. A panel whose source fails (e.g. missing a role) renders as
+unavailable while the rest keep refreshing.
 
 ### `getop config` — app configuration
 

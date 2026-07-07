@@ -21,6 +21,7 @@ from getop.main import app
         ["quota", "--help"],
         ["doctor", "--help"],
         ["config", "--help"],
+        ["top", "--help"],
     ],
 )
 def test_help_screens(app_runner, args):
@@ -41,6 +42,7 @@ def test_help_is_concise_no_iam_or_api_internals(app_runner):
         ["doctor", "--help"],
         ["info", "--help"],
         ["config", "--help"],
+        ["top", "--help"],
     ):
         combined += app_runner.invoke(app, args).output
     for banned in ("roles/", "ServiceClient", "v1alpha", "read-only ("):
