@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/egen/getop/compare/v1.2.1...v1.3.0) (2026-07-07)
+
+
+### Features
+
+* **top:** live dashboard with active users (DAU/WAU/MAU), traffic, connectors, quota, armor ([#59](https://github.com/egen/getop/issues/59)) ([4f6497c](https://github.com/egen/getop/commit/4f6497cf6ede47a59af17015f3b3419a22a4cf5a))
+
 ## [1.2.1](https://github.com/egen/getop/compare/v1.2.0...v1.2.1) (2026-07-06)
 
 
