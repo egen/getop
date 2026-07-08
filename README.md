@@ -221,6 +221,17 @@ that tripped and their confidence (jailbreak, RAI categories, CSAM,
 malicious URIs). Violations only by default; `--all` includes clean
 screenings. Carries no user identity — pair with `getop logs user`.
 
+The table truncates content to one line; every row ends with an ID. Pass it
+(a unique prefix is enough) to `--detail` for the full screened text:
+
+```sh
+getop armor --detail 1a2b3c4d          # full content of one entry
+getop armor --detail 1a2b3c4d --since 7d   # if it's older than the default 24h
+```
+
+(`--json` on the plain table also carries the complete, untruncated content
+for every row.)
+
 Add `--summary` for a per-filter rollup — hit counts, last seen, and an example
 input per category — instead of the event-by-event list:
 

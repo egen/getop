@@ -142,3 +142,68 @@ def test_normalize_response_direction():
         resource=SimpleNamespace(labels={}),
     )
     assert armor._normalize(entry)["direction"] == "response"
+
+
+def test_detail_filter_matches_any_state_and_substring():
+    f = armor.detail_filter("proj", "24h", "1abc-DEF.2~x")
+    assert 'insertId:"1abc-DEF.2~x"' in f
+    assert "filterMatchState" not in f  # IDs from --all tables resolve too
+    assert "timestamp>=" in f
+
+
+def test_detail_filter_rejects_unsafe_ids():
+    import pytest
+
+    for bad in ('a"b', "", "a b", 'x" OR logName:"'):
+        with pytest.raises(ValueError):
+            armor.detail_filter("proj", "24h", bad)
+
+
+def test_render_detail_shows_full_content():
+    from io import StringIO
+
+    from rich.console import Console
+
+    long_content = "steal the credentials " * 30  # far beyond the 60-char snippet
+    rows = [
+        {
+            "timestamp": "2026-07-08T12:00:00+00:00",
+            "direction": "prompt",
+            "match_state": "MATCH_FOUND",
+            "matched_filters": ["pi_and_jailbreak(HIGH)"],
+            "template": "tmpl-1",
+            "location": "us",
+            "content": long_content,
+            "insert_id": "1abcdef2ghijk",
+        }
+    ]
+    console = Console(file=StringIO(), width=200, force_terminal=False)
+    console.print(armor._render_detail(rows))
+    out = console.file.getvalue()
+    assert out.count("steal the credentials") >= 25  # untruncated
+    assert "pi_and_jailbreak(HIGH)" in out
+    assert "1abcdef2ghijk" in out
+    assert "tmpl-1" in out
+
+
+def test_render_table_includes_id_column():
+    from io import StringIO
+
+    from rich.console import Console
+
+    rows = [
+        {
+            "timestamp": "2026-07-08T12:00:00+00:00",
+            "direction": "prompt",
+            "match_state": "MATCH_FOUND",
+            "matched_filters": [],
+            "content": "x",
+            "insert_id": "abcdefghijklmnop",
+        }
+    ]
+    console = Console(file=StringIO(), width=200, force_terminal=False)
+    console.print(armor._render_table(rows, "24h", matched_only=True))
+    out = console.file.getvalue()
+    assert "ID" in out
+    assert "abcdefghijkl" in out  # 12-char prefix shown
+    assert "abcdefghijklmnop" not in out  # full id stays out of the table

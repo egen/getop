@@ -9,6 +9,7 @@ Enterprise app, and the per-filter verdict. By default only violations
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 import typer
@@ -44,6 +45,28 @@ def armor_base_clauses(project: str, matched_only: bool) -> list[str]:
     if matched_only:
         clauses.append('jsonPayload.sanitizationResult.filterMatchState="MATCH_FOUND"')
     return clauses
+
+
+_ID_SAFE = re.compile(r"[\w.~-]+")
+
+
+def detail_filter(project: str, since: str, insert_id: str) -> str:
+    """Cloud Logging filter for `armor --detail <id>`: all screenings in the
+    window whose insertId contains the given (prefix of an) ID.
+
+    Matches regardless of filterMatchState so IDs copied from an --all table
+    resolve too. Raises ValueError on characters that can't appear in a
+    Cloud Logging insertId, which keeps the quoted filter clause safe.
+    """
+    if not _ID_SAFE.fullmatch(insert_id):
+        raise ValueError(
+            f"Invalid entry ID {insert_id!r}: expected letters, digits, "
+            "'.', '~', '_' or '-'."
+        )
+    clauses = armor_base_clauses(project, matched_only=False)
+    clauses.append(f'insertId:"{insert_id}"')
+    clauses.append(f'timestamp>="{since_rfc3339(since)}"')
+    return "\n".join(clauses)
 
 
 def _matched_filters(filter_results: Any) -> list[str]:
@@ -253,13 +276,51 @@ def _render_table(rows: list[dict], since: str, matched_only: bool) -> Any:
                 state_styled,
                 filters,
                 _snippet(row.get("content"), 60),
+                f"[dim]{(row.get('insert_id') or '')[:12]}[/dim]",
             ]
         )
     return render.table(
         title,
-        ["Time", "Direction", "Match", "Filters", "Content"],
+        ["Time", "Direction", "Match", "Filters", "Content", "ID"],
         table_rows,
     )
+
+
+def _render_detail(rows: list[dict]) -> Any:
+    """Full, untruncated view of one (or several prefix-matched) entries."""
+    from rich.console import Group
+    from rich.panel import Panel
+    from rich.text import Text
+
+    pieces: list[Any] = []
+    for row in rows:
+        matched = row.get("match_state") == "MATCH_FOUND"
+        state_style = "bold red" if matched else "dim"
+        lines = [
+            Text.from_markup(
+                f"[dim]{row.get('timestamp')}[/dim] · {row.get('direction')} · "
+                f"[{state_style}]{row.get('match_state') or '?'}[/{state_style}]"
+            ),
+            Text.from_markup(
+                f"[bold]Filters:[/bold] "
+                f"{', '.join(row.get('matched_filters') or []) or '[dim]none matched[/dim]'}"
+            ),
+            Text.from_markup(
+                f"[bold]Template:[/bold] {row.get('template') or '?'} "
+                f"[dim]({row.get('location') or '?'})[/dim]"
+            ),
+            Text(""),
+            Text(row.get("content") or "(no content captured)"),
+        ]
+        pieces.append(
+            Panel(
+                Group(*lines),
+                title="[bold]Model Armor entry[/bold]",
+                subtitle=f"[dim]{row.get('insert_id')}[/dim]",
+                border_style="red" if matched else "cyan",
+            )
+        )
+    return Group(*pieces)
 
 
 def _render_policy(templates: list[dict]) -> Any:
@@ -295,6 +356,12 @@ def armor_command(
     summary: bool = typer.Option(
         False, "--summary", help="Aggregate violations by filter category."
     ),
+    detail: Optional[str] = typer.Option(
+        None,
+        "--detail",
+        help="Show one entry in full (untruncated content) by its ID from the "
+        "ID column; a unique prefix is enough.",
+    ),
     since: str = typer.Option("24h", "--since", help="Look-back window, e.g. 1h, 24h, 7d."),
     all_: bool = typer.Option(
         False, "--all", help="Include screenings that passed (not just violations)."
@@ -322,6 +389,28 @@ def armor_command(
     render.warn_banner(
         "Output includes prompt/response content that Model Armor screened."
     )
+
+    if detail:
+        try:
+            filter_str = detail_filter(clients.project, since, detail)
+        except ValueError as exc:
+            render.err_console.print(f"[bold red]Error:[/bold red] {exc}")
+            raise typer.Exit(code=1) from None
+        # insertId ":" matching is substring; keep prefix matches when the
+        # prefix is unambiguous, otherwise show every candidate.
+        rows = collect_violations(clients, filter_str, limit=20)
+        prefixed = [r for r in rows if str(r.get("insert_id") or "").startswith(detail)]
+        rows = prefixed or rows
+        if not rows:
+            render.err_console.print(
+                f"[bold red]Error:[/bold red] no Model Armor entry matching "
+                f"{detail!r} in the last {since}. Older entries need a wider "
+                "window, e.g. --since 7d."
+            )
+            raise typer.Exit(code=1)
+        render.output(rows, _render_detail(rows), as_json)
+        return
+
     matched_only = summary or not all_
 
     try:
