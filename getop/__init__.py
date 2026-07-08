@@ -1,3 +1,3 @@
 """getop — read-only troubleshooting CLI for Google Gemini Enterprise (Discovery Engine)."""
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"

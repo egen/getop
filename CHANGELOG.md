@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/egen/getop/compare/v1.3.0...v1.4.0) (2026-07-08)
+
+
+### Features
+
+* **armor:** --detail flag and ID column for full screened content ([#61](https://github.com/egen/getop/issues/61)) ([70c295f](https://github.com/egen/getop/commit/70c295fb302c974de16602fd9efa8098eb360951))
+
 ## [1.3.0](https://github.com/egen/getop/compare/v1.2.1...v1.3.0) (2026-07-07)
 
 
